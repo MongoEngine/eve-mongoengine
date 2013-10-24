@@ -56,3 +56,26 @@ ext.init_app(app)
 app.run()
 
 ```
+
+About mongoengine fields
+------------------------
+Because Eve contains default functionality, which maintains fields 'updated' and 'created',
+there has to be special hacky way how to do it in mongoengine too. At the time of initializing
+`EveMongoengine` extension, all registered mongoengine classes get two new fields: 'updated'
+and 'created', both type `mongoengine.DateTimeField` (of course field names are taken from config
+values `LAST_UPDATED` and `DATE_CREATED`. This is is the only way how to ensure, that
+Eve will have these fields avaliable for storing it's information about entity.
+So please, do not be surprised, that there are two more fields in your model class:
+```python
+class Person(mongoengine.Document):
+    name = mongoengine.StringField()
+    age = mongoengine.IntField()
+
+ext = EveMongoengine()
+... app init ...
+extinit_app(app)
+
+Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
+```
+If you already have these fields in your model, Eve will probably scream at you, that it's not
+possible to have these fields in schema.
