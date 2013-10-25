@@ -3,7 +3,8 @@ import json
 from flask import Response as BaseResponse
 from mongoengine import (connect, Document, StringField, IntField,
                          EmbeddedDocumentField, EmbeddedDocument,
-                         DictField, UUIDField, DynamicField, DateTimeField)
+                         DictField, UUIDField, DynamicField, DateTimeField,
+                         ReferenceField, ListField)
 from eve import Eve
 
 from eve_mongoengine import EveMongoengine
@@ -35,8 +36,10 @@ class Inner(EmbeddedDocument):
 class ComplexDoc(Document):
     i = EmbeddedDocumentField(Inner)
     d = DictField()
-    n = DynamicField() # should be omitted
-    u = UUIDField(db_field='x')
+    l = ListField(StringField())
+    n = DynamicField()
+    r = ReferenceField(SimpleDoc)
+    #u = UUIDField(db_field='x') # Not supported by eve yet, see #102
 
 class LimitedDoc(Document):
     a = StringField(required=True)

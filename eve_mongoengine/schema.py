@@ -70,7 +70,13 @@ def create_schema(model_cls):
                 fdict['max'] = field.max_value
             if getattr(field, 'min_value', None) is not None:
                fdict['min'] = field.min_value
-        #TODO: not covered by tests
+            # special cases
+            if field.__class__ is EmbeddedDocumentField:
+                # call recursively itself on embedded document to get schema
+                fdict['schema'] = create_schema(field.document_type_obj)
+            if field.__class__ is DictField:
+                # the only way how to ensure, that in dictfield can be anything
+                fdict['allow_unknown'] = True
         elif field.__class__ is DynamicField:
             fdict['allow_unknown'] = True
     return schema

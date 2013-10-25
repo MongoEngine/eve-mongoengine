@@ -20,7 +20,7 @@ from eve.utils import config, debug_error_message, validate_filters, \
     str_to_date
 from eve import ID_FIELD
 
-from mongoengine import connect, DoesNotExist
+from mongoengine import connect, DoesNotExist, EmbeddedDocumentField
 import pymongo
 from flask import abort
 
@@ -37,6 +37,32 @@ class MongoengineDataLayer(Mongo):
                             port=ext.app.config['MONGO_PORT'])
         self.models = ext.models
         self.app = ext.app
+
+    def _projection(self, resource, projection, qry):
+        """
+        Ensures correct projection for mongoengine query.
+        """
+        if projection is None:
+            return qry
+        projection = set(projection.keys())
+        if '_id' in projection:
+            projection.remove('_id')
+
+        # mongoengine's default id field name
+        projection.add('id')
+        qry = qry.only(*projection)
+
+        # ensure inner fields of embedded documents to be loaded
+        model_cls_fields = self.models[resource]._fields
+        inner_fields = []
+        for attr in projection:
+            field = model_cls_fields.get(attr, None)
+            if isinstance(field, EmbeddedDocumentField):
+                for inner_attr in field.document_type_obj._fields.iterkeys():
+                    inner_fields.append("%s.%s" % (attr, inner_attr))
+        if inner_fields:
+            qry = qry.only(*inner_fields)
+        return qry
 
 
     def find(self, resource, req):
@@ -101,13 +127,7 @@ class MongoengineDataLayer(Mongo):
         if len(spec) > 0:
             qry = qry.filter(__raw__=spec)
 
-        if projection is not None:
-            projection = set(projection.keys())
-            if '_id' in projection:
-                projection.remove('_id')
-            # mongoengine's default id field name
-            projection.add('id')
-            qry = qry.only(*projection)
+        qry = self._projection(resource, projection, qry)
 
         return qry.as_pymongo()
 
@@ -129,13 +149,7 @@ class MongoengineDataLayer(Mongo):
         if len(filter_) > 0:
             qry = qry.filter(__raw__=filter_)
 
-        if projection is not None:
-            projection = set(projection.keys())
-            if '_id' in projection:
-                projection.remove('_id')
-            # mongoengine's default id field name
-            projection.add('id')
-            qry = qry.only(*projection)
+        qry = self._projection(resource, projection, qry)
 
         try:
             return qry.as_pymongo().get()

@@ -1,7 +1,9 @@
 
+import uuid
 import unittest
 from eve_mongoengine import EveMongoengine
-from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc, WrongDoc, SETTINGS
+from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
+                   WrongDoc, SETTINGS)
 
 
 class TestHttpGet(BaseTest, unittest.TestCase):
@@ -69,7 +71,27 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.skipTest("Not implemented yet.")
 
     def test_find_all_complex(self):
-        self.skipTest("Not implemented yet")
+        i = Inner(a="hihi", b=123)
+        s = SimpleDoc(a="samurai", b=911)
+        s.save()
+        d = ComplexDoc(i=i,
+                       d={'g':'good', 'h':'hoorai'},
+                       l=['a','b','c'],
+                       n=789,
+                       r=s)
+        d.save()
+        response = self.client.get('/complexdoc')
+        json_data = response.get_json()['_items'][0]
+        self.assertDictEqual(json_data['i'], {'a':"hihi", 'b':123})
+        self.assertListEqual(json_data['l'], ['a','b','c'])
+        self.assertEqual(json_data['n'], 789)
+        self.assertEqual(json_data['r'], str(s.id))
+        # cleanup
+        d.delete()
+        s.delete()
+
+    def test_reference_fields(self):
+        self.skipTest("Reference fields not supported yet.")
 
     def test_uppercase_resource_names(self):
         # test default lowercase
