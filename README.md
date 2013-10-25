@@ -54,8 +54,15 @@ ext.init_app(app)
 
 # let's roll
 app.run()
-
 ```
+Now the name of resource will be lowercase name of given class, in this example it will be
+`person`, so the request could be `/person/`. If you want to use the name of model class
+"as is", use option `lowercase=False` in `create_settings()` method:
+```python
+ext.create_settings(Person, lowercase=False)
+```
+Then you will have to ask the server for `/Person/` URL.
+
 
 About mongoengine fields
 ------------------------
@@ -73,7 +80,7 @@ class Person(mongoengine.Document):
 
 ext = EveMongoengine()
 ... app init ...
-extinit_app(app)
+ext.init_app(app)
 
 Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 ```
