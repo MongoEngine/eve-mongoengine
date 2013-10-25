@@ -73,7 +73,10 @@ class EveMongoengine(object):
         :param lowercase: if true, all class names will be taken lowercase as
                           resource names. Default True.
         """
-        settings = {}
+        settings = {
+            'RESOURCE_METHODS': ['GET', 'POST', 'DELETE'],
+            'ITEM_METHODS': ['GET', 'PATCH', 'PUT', 'DELETE']
+        }
         domain = settings['DOMAIN'] = {}
         if not isinstance(models, (list, tuple)):
             models = [models]

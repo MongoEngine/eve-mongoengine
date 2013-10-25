@@ -15,7 +15,7 @@ import json
 from bson.errors import InvalidId
 from bson import ObjectId
 
-from eve.io.base import DataLayer
+from eve.io.mongo import Mongo
 from eve.utils import config, debug_error_message, validate_filters, \
     str_to_date
 from eve import ID_FIELD
@@ -24,7 +24,8 @@ from mongoengine import connect, DoesNotExist
 import pymongo
 from flask import abort
 
-class MongoengineDataLayer(DataLayer):
+
+class MongoengineDataLayer(Mongo):
     """
     Data layer for eve-mongoengine extension.
 
@@ -39,6 +40,9 @@ class MongoengineDataLayer(DataLayer):
 
 
     def find(self, resource, req):
+        """
+        Seach for results and return feed of them.
+        """
         qry = self.models[resource].objects
         args = dict()
         if req.max_results:
@@ -109,6 +113,9 @@ class MongoengineDataLayer(DataLayer):
 
 
     def find_one(self, resource, **lookup):
+        """
+        Look for one object.
+        """
         if config.ID_FIELD in lookup:
             try:
                 lookup[ID_FIELD] = ObjectId(lookup[ID_FIELD])
@@ -143,15 +150,18 @@ class MongoengineDataLayer(DataLayer):
     def insert(self, resource, doc_or_docs):
         datasource, filter_, _ = self._datasource_ex(resource)
         try:
-            obj_or_objs = []
             if isinstance(doc_or_docs, list):
+                ids = []
                 for doc in doc_or_docs:
-                    obj = self._doc_to_model(resource, doc)
-                    ret = obj.save(write_concern=self._wc(resource))
-                return ret
+                    model = self._doc_to_model(resource, doc)
+                    model.save(write_concern=self._wc(resource))
+                    ids.append(model.id)
+                return ids
             else:
-                return (self._doc_to_model(resource, doc_or_docs)
-                            .save(write_concern=self._wc(resource)))
+                model = self._doc_to_model(resource, doc_or_docs)
+                model.save(write_concern=self._wc(resource))
+                return model.id
+                
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an
             # existing ReplicaSet which doesn't exist. Please note that the
@@ -159,3 +169,13 @@ class MongoengineDataLayer(DataLayer):
             abort(500, description=debug_error_message(
                 'pymongo.errors.OperationFailure: %s' % e
             ))
+
+    def update(self, resource, id_, updates):
+        raise NotImplementedError()
+
+    def replace(self, resource, id_, document):
+        raise NotImplementedError()
+
+    def remove(self, resource, id_=None):
+        raise NotImplementedError()
+

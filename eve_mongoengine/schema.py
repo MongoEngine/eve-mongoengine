@@ -29,10 +29,10 @@ _mongoengine_to_cerberus = {
     DictField: 'dict',
     MapField: 'dict',
     UUIDField: 'string',
-    ObjectIdField: 'objectid'
+    ObjectIdField: 'objectid',
+    LineStringField: 'string'
     #GeoPointField ??
     #PointField ??
-    #LineStringField ??
     #BinaryField ??
     #ReferenceField ?? dict? objectid?
     #FileField ??
@@ -56,4 +56,22 @@ def create_schema(model_cls):
         if field.__class__ in _mongoengine_to_cerberus:
             cerberus_type = _mongoengine_to_cerberus[field.__class__]
             fdict['type'] = cerberus_type
+            if field.required:
+                fdict['required'] = True
+            if field.unique:
+                fdict['unique'] = True
+            if field.choices:
+                fdict['allowed'] = field.choices
+            if getattr(field, 'max_length', None) is not None:
+                fdict['maxlength'] = field.max_length
+            if getattr(field, 'min_length', None) is not None:
+               fdict['minlength'] = field.min_length
+            # TODO: not covered by tests
+            if getattr(field, 'max_value', None) is not None:
+                fdict['maxlength'] = field.max_length
+            if getattr(field, 'min_value', None) is not None:
+               fdict['minlength'] = field.min_length
+        #TODO: not covered by tests
+        elif field.__class__ is DynamicField:
+            fdict['allow_unknown'] = True
     return schema
