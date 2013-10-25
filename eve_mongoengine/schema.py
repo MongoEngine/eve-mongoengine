@@ -66,11 +66,10 @@ def create_schema(model_cls):
                 fdict['maxlength'] = field.max_length
             if getattr(field, 'min_length', None) is not None:
                fdict['minlength'] = field.min_length
-            # TODO: not covered by tests
             if getattr(field, 'max_value', None) is not None:
-                fdict['maxlength'] = field.max_length
+                fdict['max'] = field.max_value
             if getattr(field, 'min_value', None) is not None:
-               fdict['minlength'] = field.min_length
+               fdict['min'] = field.min_value
         #TODO: not covered by tests
         elif field.__class__ is DynamicField:
             fdict['allow_unknown'] = True

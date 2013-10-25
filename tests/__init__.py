@@ -44,6 +44,7 @@ class LimitedDoc(Document):
     c = StringField(choices=['x', 'y', 'z'])
     d = StringField(max_length=10)
     e = StringField(min_length=10)
+    f = IntField(min_value=5, max_value=10)
 
 class WrongDoc(Document):
     updated = IntField() # this is bad

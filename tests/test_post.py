@@ -63,7 +63,6 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200)
-        json_data = response.get_json()
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
@@ -72,9 +71,35 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         self.assertListEqual(json_data['issues'], [u"value 'ho' for field 'b' not unique"])
 
 
+    def test_post_invalid_schema_min_max(self):
+        response = self.client.post('/limiteddoc/',
+                                    data='{"a": "xoxo", "b": "xaxa", "f": 3}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        json_data = response.get_json()
+        self.assertListEqual(json_data['issues'], [u"min value for field 'f' is 5"])
+
+        response = self.client.post('/limiteddoc/',
+                                    data='{"a": "xuxu", "b": "xixi", "f": 15}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        json_data = response.get_json()
+        self.assertListEqual(json_data['issues'], [u"max value for field 'f' is 10"])
+
+
     def test_bulk_insert(self):
-        self.skipTest('Not implemented yet.')
+        response = self.client.post('/simpledoc/',
+                                    data='[{"a": "jimmy", "b": 23}, {"a": "stefanie", "b": 47}]',
+                                    content_type='application/json')
+        for result in response.get_json():
+            self.assertEqual(result['status'], "OK")
+
 
     def test_bulk_insert_error(self):
-        self.skipTest('Not implemented yet.')
+        response = self.client.post('/simpledoc/',
+                                    data='[{"a": "jimmy", "b": 23}, {"a": 111, "b": 47}]',
+                                    content_type='application/json')
+        data = response.get_json()
+        self.assertEqual(data[0]['status'], "OK")
+        self.assertEqual(data[1]['status'], "ERR")
 
