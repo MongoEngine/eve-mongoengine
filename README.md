@@ -1,24 +1,23 @@
 eve-mongoengine
 ===============
 
-An Eve extension for Mongoengine ODM support.
+Eve-Mongoengine is and [Eve](https://github.com/nicolaiarocci/eve/) extension, which
+enables Mongoengine ODM models to be used as eve schema. If you use mongoengine
+in your application and simultaneously want to use eve, instead of writing schema
+again in cerberus format, you can use this extension, which takes your mongoengine
+models and auto-transforms it into creberus schema.
 
 *NOTE:* This extension depends on resolving eve's issue #146 (https://github.com/nicolaiarocci/eve/pull/146 - settings as dict).
 
 Install
 -------
 Simple installation using pip:
-
-```bash
-pip install eve-mongoengine
-```
+`pip install eve-mongoengine`
 
 It loads all dependencies as well.
 
 For development use virtualenv and editable copy of repisotory:
-```bash
-pip install -e git+https://github.com/hellerstanislav/eve-mongoengine#egg=eve-mongoengine
-```
+`pip install -e git+https://github.com/hellerstanislav/eve-mongoengine#egg=eve-mongoengine`
 
 Usage
 -----
@@ -62,6 +61,20 @@ Now the name of resource will be lowercase name of given class, in this example 
 ext.create_settings(Person, lowercase=False)
 ```
 Then you will have to ask the server for `/Person/` URL.
+
+HTTP Methods
+------------
+By default, all HTTP methods are allowed for registered classes:
+* resource methods: `GET, POST, DELETE`
+* item methods: `GET, PATCH, PUT, DELETE`
+
+
+Validation
+----------
+By default, eve validates against cerberus schema. Because mongoengine has larger scale
+of validation possiblities, there are some cases, when eve does not recognize the validator
+(for example mongoengine's `unique_with`), mongoengine raises exception and eve fails miserably
+because of not catching this exception. If you hit this case, please, let me know and fill new issue.
 
 
 About mongoengine fields
