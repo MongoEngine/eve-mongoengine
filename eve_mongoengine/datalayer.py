@@ -10,6 +10,8 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import json
+
 from bson.errors import InvalidId
 from bson import ObjectId
 
@@ -18,7 +20,7 @@ from eve.utils import config, debug_error_message, validate_filters, \
     str_to_date
 from eve import ID_FIELD
 
-from mongoengine import connect
+from mongoengine import connect, DoesNotExist
 import pymongo
 from flask import abort
 
@@ -80,9 +82,9 @@ class MongoengineDataLayer(DataLayer):
         if req.projection:
             try:
                 client_projection = json.loads(req.projection)
-            except:
+            except Exception, e:
                 abort(400, description=debug_error_message(
-                    'Unable to parse `projection` clause'
+                    'Unable to parse `projection` clause: '+str(e)
                 ))
 
         datasource, spec, projection = self._datasource_ex(resource, spec,
@@ -99,8 +101,8 @@ class MongoengineDataLayer(DataLayer):
             projection = set(projection.keys())
             if '_id' in projection:
                 projection.remove('_id')
-                # mongoengine's default id field name
-                projection.add('id')
+            # mongoengine's default id field name
+            projection.add('id')
             qry = qry.only(*projection)
 
         return qry.as_pymongo()
@@ -124,11 +126,14 @@ class MongoengineDataLayer(DataLayer):
             projection = set(projection.keys())
             if '_id' in projection:
                 projection.remove('_id')
-                # mongoengine's default id field name
-                projection.add('id')
+            # mongoengine's default id field name
+            projection.add('id')
             qry = qry.only(*projection)
 
-        return qry.as_pymongo().get()
+        try:
+            return qry.as_pymongo().get()
+        except DoesNotExist:
+            return None
 
 
     def _doc_to_model(self, resource, doc):

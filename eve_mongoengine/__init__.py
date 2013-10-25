@@ -3,7 +3,11 @@
     eve_mongoengine
     ~~~~~~~~~~~~~~~
 
-    This module implements the extension to Eve for using Mongoengine.
+    This module implements Eve extension which enables Mongoengine models
+    to be used as eve schema. If you use mongoengine in your application
+    and simultaneously want to use eve, instead of writing schema again in
+    cerberus format, you can use this extension, which takes your mongoengine
+    models and auto-transforms it into creberus schema.
 
     :copyright: (c) 2013 by Stanislav Heller.
     :license: BSD, see LICENSE for more details.
@@ -30,7 +34,7 @@ class EveMongoengine(object):
 
         my_default_settings = {'MONGO_DBNAME': 'test'}
         ext = EveMongoengine()
-        settings = ext.create_settings(SimpleDoc)
+        settings = ext.create_settings([MyModel, MySuperModel])
         settings.update(my_default_settings)
         app = Eve(settings=settings)
         ext.init_app(app)
@@ -40,6 +44,16 @@ class EveMongoengine(object):
         self.models = {}
 
     def init_app(self, app):
+        """
+        Binds EveMongoengine extension to created eve application.
+
+        Under the hood it fixes all registered models and overwrites default
+        eve's datalayer :class:`eve.io.mongo.Mongo` into
+        :class:`eve_mongoengine.datalayer.MongoengineDataLayer`.
+
+        This method implements flask extension interface:
+        :param app: eve application object, instance of :class:`eve.Eve`.
+        """
         self.app = app
         # now we can fix all models
         for model_cls in self.models.itervalues():
@@ -97,7 +111,7 @@ class EveMongoengine(object):
             date_created = config.DATE_CREATED
         except AttributeError:
             date_created = 'created'
-        date_utc = lambda: datetime.utcnow().replace(microsecond=0)
+        date_utc = lambda: datetime.now().replace(microsecond=0)
         new_fields = {
             # TODO: updating last_updated field every time when saved
             last_updated: mongoengine.DateTimeField(default=date_utc),
