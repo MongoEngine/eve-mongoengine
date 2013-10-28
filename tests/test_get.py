@@ -91,6 +91,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = self.client.get('/simpledoc?where={"a": "y"}')
         json_data = response.get_json()
         try:
+            self.assertEqual(len(json_data['_items']), 1)
             self.assertEqual(json_data['_items'][0]['b'], 123)
         finally:
             d.delete()
