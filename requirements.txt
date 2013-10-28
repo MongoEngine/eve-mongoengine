@@ -1,0 +1,2 @@
+mongoengine>=0.8.4
+eve>=0.1
