@@ -19,7 +19,7 @@ import mongoengine
 
 from .schema import create_schema
 from .datalayer import MongoengineDataLayer
-
+from .struct import Settings
 
 class EveMongoengine(object):
     """
@@ -43,6 +43,18 @@ class EveMongoengine(object):
         self.data = None
         self.models = {}
 
+    def _parse_config(self):
+        # parse app config
+        config = self.app.config
+        try:
+            self.last_updated = config.LAST_UPDATED
+        except AttributeError:
+            self.last_updated = 'updated'
+        try:
+            self.date_created = config.DATE_CREATED
+        except AttributeError:
+            self.date_created = 'created'
+
     def init_app(self, app):
         """
         Binds EveMongoengine extension to created eve application.
@@ -55,6 +67,7 @@ class EveMongoengine(object):
         :param app: eve application object, instance of :class:`eve.Eve`.
         """
         self.app = app
+        self._parse_config()
         # now we can fix all models
         for model_cls in self.models.itervalues():
             self.fix_model_class(model_cls)
@@ -73,10 +86,10 @@ class EveMongoengine(object):
         :param lowercase: if true, all class names will be taken lowercase as
                           resource names. Default True.
         """
-        settings = {
+        settings = Settings({
             'RESOURCE_METHODS': ['GET', 'POST', 'DELETE'],
             'ITEM_METHODS': ['GET', 'PATCH', 'PUT', 'DELETE']
-        }
+        })
         domain = settings['DOMAIN'] = {}
         if not isinstance(models, (list, tuple)):
             models = [models]
@@ -92,6 +105,7 @@ class EveMongoengine(object):
             self.models[resource_name] = model_cls
         return settings
 
+
     def fix_model_class(self, model_cls):
         """
         Adds necessary fields (updated and created) into model class
@@ -105,20 +119,11 @@ class EveMongoengine(object):
 
         :param model_cls: mongoengine's model class to be fixed up.
         """
-        config = self.app.config
-        try:
-            last_updated = config.LAST_UPDATED
-        except AttributeError:
-            last_updated = 'updated'
-        try:
-            date_created = config.DATE_CREATED
-        except AttributeError:
-            date_created = 'created'
         date_utc = lambda: datetime.now().replace(microsecond=0)
         new_fields = {
             # TODO: updating last_updated field every time when saved
-            last_updated: mongoengine.DateTimeField(default=date_utc),
-            date_created: mongoengine.DateTimeField(default=date_utc)
+            self.last_updated: mongoengine.DateTimeField(default=date_utc),
+            self.date_created: mongoengine.DateTimeField(default=date_utc)
         }
         for attr_name, attr_value in new_fields.iteritems():
             # If the field does exist, we just check if it has right

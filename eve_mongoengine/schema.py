@@ -39,6 +39,7 @@ _mongoengine_to_cerberus = {
     #ImageField ??
 }
 
+
 def create_schema(model_cls):
     """
     :param model_cls: Mongoengine model class, subclass of
@@ -74,9 +75,6 @@ def create_schema(model_cls):
             if field.__class__ is EmbeddedDocumentField:
                 # call recursively itself on embedded document to get schema
                 fdict['schema'] = create_schema(field.document_type_obj)
-            if field.__class__ is DictField:
-                # the only way how to ensure, that in dictfield can be anything
-                fdict['allow_unknown'] = True
         elif field.__class__ is DynamicField:
             fdict['allow_unknown'] = True
     return schema
