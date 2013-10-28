@@ -1,10 +1,7 @@
 
 import json
 from flask import Response as BaseResponse
-from mongoengine import (connect, Document, StringField, IntField,
-                         EmbeddedDocumentField, EmbeddedDocument,
-                         DictField, UUIDField, DynamicField, DateTimeField,
-                         ReferenceField, ListField)
+from mongoengine import *
 from eve import Eve
 
 from eve_mongoengine import EveMongoengine
@@ -34,14 +31,15 @@ class Inner(EmbeddedDocument):
     b = IntField()
 
 class ComplexDoc(Document):
+    # more complex field with embedded documents and lists
     i = EmbeddedDocumentField(Inner)
     d = DictField()
     l = ListField(StringField())
     n = DynamicField()
     r = ReferenceField(SimpleDoc)
-    #u = UUIDField(db_field='x') # Not supported by eve yet, see #102
 
 class LimitedDoc(Document):
+    # doc for testing field limits and properties
     a = StringField(required=True)
     b = StringField(unique=True)
     c = StringField(choices=['x', 'y', 'z'])
@@ -50,14 +48,32 @@ class LimitedDoc(Document):
     f = IntField(min_value=5, max_value=10)
 
 class WrongDoc(Document):
-    updated = IntField() # this is bad
+    updated = IntField() # this is bad name
+
+class FieldsDoc(Document):
+    # special document for testing any other field types
+    a = URLField()
+    b = EmailField()
+    c = LongField()
+    d = DecimalField()
+    e = SortedListField(IntField())
+    f = MapField(StringField())
+    #g = UUIDField() # Not supported by eve yet, see #102
+    h = ObjectIdField()
+    i = BinaryField()
+
+    j = LineStringField()
+    k = GeoPointField()
+    l = PointField()
+    m = PolygonField()
 
 
 class BaseTest(object):
     @classmethod
     def setUpClass(cls):
         ext = EveMongoengine()
-        settings = ext.create_settings([SimpleDoc, ComplexDoc, LimitedDoc])
+        settings = ext.create_settings([SimpleDoc, ComplexDoc,
+                                        LimitedDoc, FieldsDoc])
         settings.update(SETTINGS)
         app = Eve(settings=settings)
         app.debug = True

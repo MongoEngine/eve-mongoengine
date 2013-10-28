@@ -30,13 +30,17 @@ _mongoengine_to_cerberus = {
     MapField: 'dict',
     UUIDField: 'string',
     ObjectIdField: 'objectid',
-    LineStringField: 'string'
-    #GeoPointField ??
-    #PointField ??
-    #BinaryField ??
+    LineStringField: 'dict',
+    GeoPointField: 'list',
+    PointField: 'dict',
+    PolygonField: 'dict',
+    BinaryField: 'string'
+
     #ReferenceField ?? dict? objectid?
-    #FileField ??
-    #ImageField ??
+
+    #NOT SUPPORTED:
+    # FileField, ImageField, SequenceField
+    # GenericEmbeddedDocumentField
 }
 
 

@@ -86,38 +86,13 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         d2.delete()
 
     def test_find_all_filtering(self):
-        self.skipTest('Cannot test this')
         d = SimpleDoc(a='x', b=987).save()
         d2 = SimpleDoc(a='y', b=123).save()
         response = self.client.get('/simpledoc?where={"a": "y"}')
         json_data = response.get_json()
-        self.assertEqual(json_data['_items']['b'], 123)
+        self.assertEqual(json_data['_items'][0]['b'], 123)
         d.delete()
         d2.delete()
-
-    def test_find_all_complex(self):
-        i = Inner(a="hihi", b=123)
-        s = SimpleDoc(a="samurai", b=911)
-        s.save()
-        d = ComplexDoc(i=i,
-                       d={'g':'good', 'h':'hoorai'},
-                       l=['a','b','c'],
-                       n=789,
-                       r=s)
-        d.save()
-        response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
-        self.assertDictEqual(json_data['d'], {'g':'good', 'h':'hoorai'})
-        self.assertDictEqual(json_data['i'], {'a':"hihi", 'b':123})
-        self.assertListEqual(json_data['l'], ['a','b','c'])
-        self.assertEqual(json_data['n'], 789)
-        self.assertEqual(json_data['r'], str(s.id))
-        # cleanup
-        d.delete()
-        s.delete()
-
-    def test_reference_fields(self):
-        self.skipTest("Reference fields not supported yet.")
 
     def test_uppercase_resource_names(self):
         # test default lowercase
