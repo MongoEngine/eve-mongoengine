@@ -7,6 +7,7 @@ setup(
     version='0.0.1',
     url='https://github.com/hellerstanislav/eve-mongoengine',
     author='Stanislav Heller',
+    author_email='heller.stanislav@gmail.com',
     description='An Eve extension for Mongoengine ODM support',
     packages=['eve_mongoengine'],
     zip_safe=False,
@@ -14,8 +15,7 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Eve',
+        'Eve>=0.1',
         'Mongoengine>=0.8.4',
-    ],
-    dependency_links = ["git+https://github.com/nicolaiarocci/eve.git@develop#egg=Eve"]
+    ]
 )
