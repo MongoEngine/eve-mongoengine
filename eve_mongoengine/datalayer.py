@@ -11,6 +11,7 @@
 """
 
 import json
+import ast
 
 from bson.errors import InvalidId
 from bson import ObjectId
@@ -38,30 +39,35 @@ class MongoengineDataLayer(Mongo):
         self.models = ext.models
         self.app = ext.app
 
+
+    def _embedded_in_model(self, model_cls):
+        for field in model_cls._fields.itervalues():
+            if isinstance(field, EmbeddedDocumentField):
+                return True
+        return False
+
+
     def _projection(self, resource, projection, qry):
         """
         Ensures correct projection for mongoengine query.
         """
         if projection is None:
             return qry
+
+        # fix mongoengine's 'id' field (_id -> id)
         projection = set(projection.keys())
         if '_id' in projection:
             projection.remove('_id')
-
-        # mongoengine's default id field name
         projection.add('id')
-        qry = qry.only(*projection)
 
-        # ensure inner fields of embedded documents to be loaded
-        model_cls_fields = self.models[resource]._fields
-        inner_fields = []
-        for attr in projection:
-            field = model_cls_fields.get(attr, None)
-            if isinstance(field, EmbeddedDocumentField):
-                for inner_attr in field.document_type_obj._fields.iterkeys():
-                    inner_fields.append("%s.%s" % (attr, inner_attr))
-        if inner_fields:
-            qry = qry.only(*inner_fields)
+        model_cls = self.models[resource]
+        if self._embedded_in_model(model_cls):
+            # cannot be resolved by calling 'only()'. We have to call exclude()
+            # on all non-projected fields
+            non_projected = set(model_cls._fields.keys()) - projection
+            qry = qry.exclude(*non_projected)
+        else:
+            qry = qry.only(*projection)
         return qry
 
 
@@ -85,10 +91,10 @@ class MongoengineDataLayer(Mongo):
         # return an error)
         if req.sort:
             sort = ast.literal_eval(req.sort)
-            for field, direction in sort:
+            for field, direction in sort.iteritems():
                 if direction < 0:
                     field = "-%s" % field
-                qry.order_by(field)
+                qry = qry.order_by(field)
 
         client_projection = {}
         spec = {}
