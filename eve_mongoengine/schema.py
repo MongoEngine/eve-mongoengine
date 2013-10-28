@@ -77,9 +77,6 @@ def create_schema(model_cls, lowercase=True):
             if getattr(field, 'min_value', None) is not None:
                fdict['min'] = field.min_value
             # special cases
-            if field.__class__ is EmbeddedDocumentField:
-                # call recursively itself on embedded document to get schema
-                fdict['schema'] = create_schema(field.document_type, lowercase)
             elif field.__class__ is ReferenceField:
                 # create data_relation schema
                 resource = field.document_type.__name__

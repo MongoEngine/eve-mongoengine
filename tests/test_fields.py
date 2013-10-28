@@ -64,8 +64,26 @@ class TestFieldTypes(BaseTest, unittest.TestCase):
         response = self.client.get('/complexdoc')
         json_data = response.get_json()['_items'][0]
         self.assertDictEqual(json_data['i'], {'a':"hihi", 'b':123})
-        # cleanup
         d.delete()
+        # POST request
+        response = self.client.post('/complexdoc/',
+                                    data='{"i": {"a": "xaxa", "b":-555}}',
+                                    content_type='application/json')
+        self.assertEqual(response.get_json()["status"], "OK")
+
+        response = self.client.get('/complexdoc')
+        json_data = response.get_json()['_items'][0]
+        self.assertDictEqual(json_data['i'], {'a':"xaxa", 'b':-555})
+
+        ComplexDoc.objects[0].delete()
+        response = self.client.post('/complexdoc/',
+                                    data='{"i": {"a": "bar", "b": "baz"}}',
+                                    content_type='application/json')
+        json_data = response.get_json()
+        self.assertEqual(json_data["status"], "ERR")
+        self.assertEqual(json_data["issues"][0], "ValidationError (ComplexDoc"\
+                         ":None) (b.baz could not be converted to int: ['i'])")
+
 
     def test_dynamic_field(self):
         d = ComplexDoc(n=789)

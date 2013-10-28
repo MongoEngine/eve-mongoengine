@@ -31,8 +31,10 @@ class EveMongoengineValidator(Validator):
         schema and if it does not fail, repeats the same against mongoengine
         validation machinery.
         """
+        # call default eve's validator
         if not Validator.validate(self, document, schema, update):
             return False
+        # validate using mongoengine field validators
         model_cls = app.data.models[self.resource]
         doc = model_cls(**document)
         try:
