@@ -1,4 +1,5 @@
 
+import json
 import uuid
 import unittest
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
@@ -6,21 +7,54 @@ from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
 
 class TestFieldTypes(BaseTest, unittest.TestCase):
 
-    def test_url_field(self):
-        d = FieldsDoc(a='http://google.com')
-        d.save()
+    def _fixture_template(self, data_ok, expected=None, data_fail=None, msg=None):
+        d = FieldsDoc(**data_ok).save()
+        if expected is None:
+            expected = data_ok
         response = self.client.get('/fieldsdoc')
         json_data = response.get_json()['_items'][0]
-        self.assertEqual(json_data['a'], 'http://google.com')
-        d.delete()
+        try:
+            for key, value in expected.iteritems():
+                self.assertEqual(json_data[key], value)
+        finally:
+            d.delete()
+        if not data_fail:
+            return
         # post
         response = self.client.post('/fieldsdoc/',
-                                    data='{"a": "foobar"}',
+                                    data=json.dumps(data_fail),
                                     content_type='application/json')
         json_data = response.get_json()
         self.assertEqual(json_data['status'], "ERR")
-        exp = "ValidationError (FieldsDoc:None) (Invalid URL: foobar: ['a'])"
-        self.assertListEqual(json_data['issues'], [exp])
+        self.assertListEqual(json_data['issues'], [msg])
+
+    def test_url_field(self):
+        self._fixture_template(data_ok={'a':'http://google.com'},
+                               data_fail={'a':'foobar'},
+                               msg="ValidationError (FieldsDoc:None) (Invalid"\
+                                   " URL: foobar: ['a'])")
+
+    def test_email_field(self):
+        self._fixture_template(data_ok={'b':'heller.stanislav@gmail.com'},
+                               data_fail={'b':'invalid@email'},
+                               msg="ValidationError (FieldsDoc:None) (Invalid"\
+                                   " Mail-address: invalid@email: ['b'])")
+
+    def test_long_field(self):
+        self._fixture_template(data_ok={'c': 999L})
+
+    def test_decimal_field(self):
+        self._fixture_template(data_ok={'d': 10.34})
+
+    def test_sortedlist_field(self):
+        self._fixture_template(data_ok={'e':[4,1,8]}, expected={'e': [1,4,8]})
+
+    def test_map_field(self):
+        self._fixture_template(data_ok={'f': {'x': 'foo', 'y': 'bar'}},
+                               data_fail={'f': {'x': 1}},
+                               msg="ValidationError (FieldsDoc:None) "\
+                                   "(x.StringField only accepts string "\
+                                   "values: ['f'])")
 
 
     def test_embedded_document_field(self):

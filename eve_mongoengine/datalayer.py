@@ -10,20 +10,23 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import json
+# builtin
 import ast
+import json
 
+# 3rd party
 from bson.errors import InvalidId
 from bson import ObjectId
+from flask import abort
+import pymongo
+from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
+                         DictField, MapField)
 
+# eve
 from eve.io.mongo import Mongo
 from eve.utils import config, debug_error_message, validate_filters, \
     str_to_date
 from eve import ID_FIELD
-
-from mongoengine import connect, DoesNotExist, EmbeddedDocumentField
-import pymongo
-from flask import abort
 
 
 class MongoengineDataLayer(Mongo):
@@ -40,9 +43,12 @@ class MongoengineDataLayer(Mongo):
         self.app = ext.app
 
 
-    def _embedded_in_model(self, model_cls):
+    def _structure_in_model(self, model_cls):
+        """
+        Returns True if model contains some kind of structured field.
+        """
         for field in model_cls._fields.itervalues():
-            if isinstance(field, EmbeddedDocumentField):
+            if isinstance(field, (EmbeddedDocumentField, DictField, MapField)):
                 return True
         return False
 
@@ -61,7 +67,7 @@ class MongoengineDataLayer(Mongo):
         projection.add('id')
 
         model_cls = self.models[resource]
-        if self._embedded_in_model(model_cls):
+        if self._structure_in_model(model_cls):
             # cannot be resolved by calling 'only()'. We have to call exclude()
             # on all non-projected fields
             non_projected = set(model_cls._fields.keys()) - projection

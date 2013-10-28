@@ -22,7 +22,7 @@ _mongoengine_to_cerberus = {
     URLField: 'string',
     EmailField: 'string',
     LongField: 'integer',
-    DecimalField: 'integer',
+    DecimalField: 'float',
     EmbeddedDocumentField: 'dict',
     ListField: 'list',
     SortedListField: 'list',
