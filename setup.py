@@ -14,7 +14,8 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Eve>=0.1',
+        'Eve',
         'Mongoengine>=0.8.4',
-    ]
+    ],
+    dependency_links = ["git+https://github.com/nicolaiarocci/eve.git@develop#egg=Eve"]
 )
