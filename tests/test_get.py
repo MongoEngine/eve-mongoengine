@@ -90,9 +90,27 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         d2 = SimpleDoc(a='y', b=123).save()
         response = self.client.get('/simpledoc?where={"a": "y"}')
         json_data = response.get_json()
-        self.assertEqual(json_data['_items'][0]['b'], 123)
-        d.delete()
-        d2.delete()
+        try:
+            self.assertEqual(json_data['_items'][0]['b'], 123)
+        finally:
+            d.delete()
+            d2.delete()
+
+    def test_embedded_resource_serialization(self):
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        d = ComplexDoc(r=s).save()
+        response = self.client.get('/complexdoc?embedded={"r":1}')
+        json_data = response.get_json()
+        expected = {'a': "Answer to everything", 'b': 42}
+        try:
+            emb = json_data['_items'][0]['r']
+            self.assertEqual(emb['a'], expected['a'])
+            self.assertEqual(emb['b'], expected['b'])
+            self.assertIn('created', emb)
+            self.assertIn('updated', emb)
+        finally:
+            d.delete()
+            s.delete()
 
     def test_uppercase_resource_names(self):
         # test default lowercase

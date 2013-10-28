@@ -34,9 +34,8 @@ _mongoengine_to_cerberus = {
     GeoPointField: 'list',
     PointField: 'dict',
     PolygonField: 'dict',
-    BinaryField: 'string'
-
-    #ReferenceField ?? dict? objectid?
+    BinaryField: 'string',
+    ReferenceField: 'objectid'
 
     #NOT SUPPORTED:
     # FileField, ImageField, SequenceField
@@ -44,10 +43,12 @@ _mongoengine_to_cerberus = {
 }
 
 
-def create_schema(model_cls):
+def create_schema(model_cls, lowercase=True):
     """
     :param model_cls: Mongoengine model class, subclass of
                       :class:`mongoengine.Document`.
+    :param lowercase: True if names of resource for model class has to be
+                      treated as lowercase string of classname.
     """
     schema = {}
     for fname, field in model_cls._fields.iteritems():
@@ -78,7 +79,17 @@ def create_schema(model_cls):
             # special cases
             if field.__class__ is EmbeddedDocumentField:
                 # call recursively itself on embedded document to get schema
-                fdict['schema'] = create_schema(field.document_type_obj)
+                fdict['schema'] = create_schema(field.document_type, lowercase)
+            elif field.__class__ is ReferenceField:
+                # create data_relation schema
+                resource = field.document_type.__name__
+                if lowercase:
+                    resource = resource.lower()
+                fdict['data_relation'] = {
+                    'resource': resource,
+                    'field': '_id', #FIXME: what if id is other field?
+                    'embeddable': True
+                }
         elif field.__class__ is DynamicField:
             fdict['allow_unknown'] = True
     return schema

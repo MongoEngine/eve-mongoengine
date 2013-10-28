@@ -100,7 +100,7 @@ class EveMongoengine(object):
             if not issubclass(model_cls, mongoengine.Document):
                 raise TypeError("Class '%s' is not a subclass of "
                                 "mongoengine.Document." % model_cls.__name__)
-            schema = create_schema(model_cls)
+            schema = create_schema(model_cls, lowercase)
             resource_name = model_cls.__name__
             if lowercase:
                 resource_name = resource_name.lower()
