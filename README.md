@@ -7,7 +7,7 @@ in your application and simultaneously want to use eve, instead of writing schem
 again in cerberus format, you can use this extension, which takes your mongoengine
 models and auto-transforms it into creberus schema.
 
-*NOTE:* This extension depends on resolving eve's issue #146 (https://github.com/nicolaiarocci/eve/pull/146 - settings as dict).
+**NOTE:** This extension depends on resolving eve's issue #146 (https://github.com/nicolaiarocci/eve/pull/146 - settings as dict).
 
 Install
 -------
@@ -48,7 +48,7 @@ settings.update(my_settings)
 
 # init application
 app = Eve(settings=settings)
-# do not forget to init extension!
+# do not forget to monkey-patch application!
 ext.init_app(app)
 
 # let's roll
@@ -72,9 +72,25 @@ By default, all HTTP methods are allowed for registered classes:
 Validation
 ----------
 By default, eve validates against cerberus schema. Because mongoengine has larger scale
-of validation possiblities, there are some cases, when eve does not recognize the validator
-(for example mongoengine's `unique_with`), mongoengine raises exception and eve fails miserably
-because of not catching this exception. If you hit this case, please, let me know and fill new issue.
+of validation possiblities, there are some cases, when cerberus is not enough. Eve-Mongoengine
+comes with fancy solution: all errors, which are catchable by cerberus, are catched by cerberus
+and mongoengine ones are catched by custom validator and returned in cerberus error format.
+Example of this case could be mongoengine's `URLField`, which does not have it's cerberus
+opposie. In this case, if you fill in wrong URL, you get mongoengine error message. Let's see
+an example with internet resource as a model:
+```python
+class Resource(Document):
+    url = URLField()
+    author = StringField()
+```
+And then if you make POST request with wrong URL:
+```
+$ curl -d '{"url": "not-an-url", "author": "John"}' -H 'Content-Type: application/json' http://my-eve-server/resource
+```
+The response will contain
+```
+{"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
+```
 
 
 About mongoengine fields

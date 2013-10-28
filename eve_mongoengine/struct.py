@@ -1,7 +1,7 @@
 
 """
-    struct
-    ~~~~~~
+    eve_mongoengine.struct
+    ~~~~~~~~~~~~~~~~~~~~~~
 
     Datastructures for eve-mongoengine.
 

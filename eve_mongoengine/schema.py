@@ -1,7 +1,7 @@
 
 """
-    schema
-    ~~~~~~
+    eve_mongoengine.schema
+    ~~~~~~~~~~~~~~~~~~~~~~
 
     Mapping mongoengine field types to cerberus schema.
 
