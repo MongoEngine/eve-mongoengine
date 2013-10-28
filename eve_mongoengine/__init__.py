@@ -20,6 +20,7 @@ import mongoengine
 from .schema import create_schema
 from .datalayer import MongoengineDataLayer
 from .struct import Settings
+from .validation import EveMongoengineValidator
 
 class EveMongoengine(object):
     """
@@ -67,6 +68,8 @@ class EveMongoengine(object):
         :param app: eve application object, instance of :class:`eve.Eve`.
         """
         self.app = app
+        # overwrite default eve.io.mongo.validation.Validator
+        app.validator = EveMongoengineValidator
         self._parse_config()
         # now we can fix all models
         for model_cls in self.models.itervalues():
