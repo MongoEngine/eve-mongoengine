@@ -170,10 +170,13 @@ class MongoengineDataLayer(Mongo):
 
 
     def _doc_to_model(self, resource, doc):
+        if '_id' in doc:
+            doc['id'] = doc.pop('_id')
         return self.models[resource](**doc)
 
 
     def insert(self, resource, doc_or_docs):
+        """Called when performing POST request"""
         datasource, filter_, _ = self._datasource_ex(resource)
         try:
             if isinstance(doc_or_docs, list):
@@ -196,11 +199,38 @@ class MongoengineDataLayer(Mongo):
                 'pymongo.errors.OperationFailure: %s' % e
             ))
 
+    def _transform_updates_to_mongoengine_kwargs(self, updates):
+        """
+        Transforms update dict to special mongoengine syntax with set__,
+        unset__ etc.
+        """
+        return dict((("set__%s" % k), v) for (k, v) in updates.iteritems())
+
     def update(self, resource, id_, updates):
-        raise NotImplementedError()
+        """Called when performing PATCH request."""
+        try:
+            # FIXME: filters?
+            kwargs = self._transform_updates_to_mongoengine_kwargs(updates)
+            qry = self.models[resource].objects(id=id_)
+            qry.update_one(write_concern=self._wc(resource), **kwargs)
+        except pymongo.errors.OperationFailure as e:
+            # see comment in :func:`insert()`.
+            abort(500, description=debug_error_message(
+                'pymongo.errors.OperationFailure: %s' % e
+            ))
 
     def replace(self, resource, id_, document):
-        raise NotImplementedError()
+        """Called when performing PUT request."""
+        try:
+            # FIXME: filters?
+            model = self._doc_to_model(resource, document)
+            model.save(write_concern=self._wc(resource))
+        except pymongo.errors.OperationFailure as e:
+            # see comment in :func:`insert()`.
+            abort(500, description=debug_error_message(
+                'pymongo.errors.OperationFailure: %s' % e
+            ))
+
 
     def remove(self, resource, id_=None):
         raise NotImplementedError()
