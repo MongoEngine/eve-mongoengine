@@ -212,4 +212,18 @@ class MongoengineDataLayer(Mongo):
             ))
 
     def remove(self, resource, id_=None):
-        raise NotImplementedError()
+        """Called when performing DELETE request."""
+        query = {ID_FIELD: ObjectId(id_)} if id_ else None
+        datasource, filter_, _ = self._datasource_ex(resource, query)
+        try:
+            model_cls = self.models[resource]
+            if not filter_:
+                qry = model_cls.objects
+            else:
+                qry = model_cls.objects(__raw__=filter_)
+            qry.delete(write_concern=self._wc(resource))
+        except pymongo.errors.OperationFailure as e:
+            # see comment in :func:`insert()`.
+            abort(500, description=debug_error_message(
+                'pymongo.errors.OperationFailure: %s' % e
+            ))
