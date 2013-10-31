@@ -1,5 +1,7 @@
 """Internal module for Python 2 backwards compatibility."""
 
+# flake8: noqa
+
 import sys
 
 if sys.version_info[0] < 3:
