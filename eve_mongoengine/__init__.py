@@ -21,6 +21,7 @@ from .schema import create_schema
 from .datalayer import MongoengineDataLayer
 from .struct import Settings
 from .validation import EveMongoengineValidator
+from ._compat import itervalues, iteritems
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # until eve#146 is fixed, we need this monkey-patch
@@ -100,7 +101,7 @@ class EveMongoengine(object):
         app.validator = EveMongoengineValidator
         self._parse_config()
         # now we can fix all models
-        for model_cls in self.models.itervalues():
+        for model_cls in itervalues(self.models):
             self.fix_model_class(model_cls)
         # overwrite default data layer to get proper mongoengine functionality
         app.data = MongoengineDataLayer(self)
@@ -155,7 +156,7 @@ class EveMongoengine(object):
             self.last_updated: mongoengine.DateTimeField(default=date_utc),
             self.date_created: mongoengine.DateTimeField(default=date_utc)
         }
-        for attr_name, attr_value in new_fields.iteritems():
+        for attr_name, attr_value in iteritems(new_fields):
             # If the field does exist, we just check if it has right
             # type (mongoengine.DateTimeField) and pass
             if attr_name in model_cls._fields:
@@ -186,6 +187,6 @@ class EveMongoengine(object):
 
             # this is just copied from mongoengine and frankly, i just dont
             # have a clue, what it does...
-            iterfields = model_cls._fields.itervalues()
+            iterfields = itervalues(model_cls._fields)
             created = [(v.creation_counter, v.name) for v in iterfields]
             model_cls._fields_ordered = tuple(i[1] for i in sorted(created))

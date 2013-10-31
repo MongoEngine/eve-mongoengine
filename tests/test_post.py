@@ -30,7 +30,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         json_data = response.get_json()
         self.assertIn('status', json_data)
         self.assertEqual(json_data['status'], "ERR")
-        self.assertListEqual(json_data['issues'], [u"value of field 'a' must be of string type"])
+        self.assertListEqual(json_data['issues'], ["value of field 'a' must be of string type"])
 
     def test_post_invalid_schema_limits(self):
         # break min_length
@@ -39,14 +39,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200) # WTF
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"min length for field 'e' is 10"])
+        self.assertListEqual(json_data['issues'], ["min length for field 'e' is 10"])
         # break max_length
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho", "c": "x", "d": "string > 10 chars", "e": "some very long text"}',
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200) # WTF
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"max length for field 'd' is 10"])
+        self.assertListEqual(json_data['issues'], ["max length for field 'd' is 10"])
 
 
     def test_post_invalid_schema_required(self):
@@ -55,7 +55,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200) # WTF
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"required field(s) are missing: 'a'"])
+        self.assertListEqual(json_data['issues'], ["required field(s) are missing: 'a'"])
 
 
     def test_post_invalid_schema_unique(self):
@@ -68,7 +68,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200) # WTF
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"value 'ho' for field 'b' not unique"])
+        self.assertListEqual(json_data['issues'], ["value 'ho' for field 'b' not unique"])
 
 
     def test_post_invalid_schema_min_max(self):
@@ -77,14 +77,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200)
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"min value for field 'f' is 5"])
+        self.assertListEqual(json_data['issues'], ["min value for field 'f' is 5"])
 
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "xuxu", "b": "xixi", "f": 15}',
                                     content_type='application/json')
         self.assertEqual(response.status_code, 200)
         json_data = response.get_json()
-        self.assertListEqual(json_data['issues'], [u"max value for field 'f' is 10"])
+        self.assertListEqual(json_data['issues'], ["max value for field 'f' is 10"])
 
 
     def test_bulk_insert(self):

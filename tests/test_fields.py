@@ -4,6 +4,7 @@ import uuid
 import unittest
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
                    WrongDoc, FieldsDoc, SETTINGS)
+from eve_mongoengine._compat import iteritems, long
 
 class TestFieldTypes(BaseTest, unittest.TestCase):
 
@@ -14,7 +15,7 @@ class TestFieldTypes(BaseTest, unittest.TestCase):
         response = self.client.get('/fieldsdoc')
         json_data = response.get_json()['_items'][0]
         try:
-            for key, value in expected.iteritems():
+            for key, value in iteritems(expected):
                 self.assertEqual(json_data[key], value)
         finally:
             d.delete()
@@ -41,7 +42,7 @@ class TestFieldTypes(BaseTest, unittest.TestCase):
                                    " Mail-address: invalid@email: ['b'])")
 
     def test_long_field(self):
-        self._fixture_template(data_ok={'c': 999L})
+        self._fixture_template(data_ok={'c': long(999)})
 
     def test_decimal_field(self):
         self._fixture_template(data_ok={'d': 10.34})

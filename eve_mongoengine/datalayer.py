@@ -28,6 +28,8 @@ from eve.io.mongo.parser import parse, ParseError
 from eve.utils import config, debug_error_message, validate_filters
 from eve import ID_FIELD
 
+# Python3 compatibility
+from ._compat import itervalues, iteritems
 
 class MongoengineDataLayer(Mongo):
     """
@@ -46,7 +48,7 @@ class MongoengineDataLayer(Mongo):
         """
         Returns True if model contains some kind of structured field.
         """
-        for field in model_cls._fields.itervalues():
+        for field in itervalues(model_cls._fields):
             if isinstance(field, (EmbeddedDocumentField, DictField, MapField)):
                 return True
         return False
@@ -91,7 +93,7 @@ class MongoengineDataLayer(Mongo):
         # return an error)
         if req.sort:
             sort = ast.literal_eval(req.sort)
-            for field, direction in sort.iteritems():
+            for field, direction in iteritems(sort):
                 if direction < 0:
                     field = "-%s" % field
                 qry = qry.order_by(field)
@@ -181,7 +183,7 @@ class MongoengineDataLayer(Mongo):
         Transforms update dict to special mongoengine syntax with set__,
         unset__ etc.
         """
-        return dict((("set__%s" % k), v) for (k, v) in updates.iteritems())
+        return dict((("set__%s" % k), v) for (k, v) in iteritems(updates))
 
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""

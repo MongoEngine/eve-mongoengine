@@ -73,13 +73,13 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         d2 = SimpleDoc(a='abc', b=-7).save()
         response = self.client.get('/simpledoc?sort={"a":1}')
         json_data = response.get_json()
-        real = map(lambda x: x['a'], json_data['_items'])
-        expected = [u'abc', u'abz']
+        real = [x['a'] for x in json_data['_items']]
+        expected = ['abc', 'abz']
         self.assertListEqual(real, expected)
 
         response = self.client.get('/simpledoc?sort={"b":-1}')
         json_data = response.get_json()
-        real = map(lambda x: x['b'], json_data['_items'])
+        real = [x['b'] for x in json_data['_items']]
         expected = [3, -7]
         self.assertListEqual(real, expected)
         d.delete()

@@ -15,7 +15,7 @@ def _merge_dicts(d1, d2):
     Helper function for merging dicts. This functino is called in
     :func:`Settings.update`.
     """
-    for key, value in d2.iteritems():
+    for key, value in d2.items():
         if key in d1:
             if isinstance(d1[key], dict) and isinstance(value, dict):
                 _merge_dicts(d1[key], value)
