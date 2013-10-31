@@ -71,6 +71,7 @@ class FieldsDoc(Document):
     k = GeoPointField()
     l = PointField()
     m = PolygonField()
+    n = StringField(db_field='longFieldName')
 
 
 class BaseTest(object):

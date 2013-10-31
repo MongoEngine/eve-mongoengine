@@ -6,7 +6,7 @@ from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
                    WrongDoc, FieldsDoc, SETTINGS)
 from eve_mongoengine._compat import iteritems, long
 
-class TestFieldTypes(BaseTest, unittest.TestCase):
+class TestFields(BaseTest, unittest.TestCase):
 
     def _fixture_template(self, data_ok, expected=None, data_fail=None, msg=None):
         d = FieldsDoc(**data_ok).save()
@@ -116,3 +116,23 @@ class TestFieldTypes(BaseTest, unittest.TestCase):
         d.delete()
         s.delete()
 
+    def test_db_field_name(self):
+        # test if eve returns fields named like in db, not in python
+        response = self.client.post('/fieldsdoc/',
+                                    data='{"longFieldName": "hello"}',
+                                    content_type='application/json')
+        json_data = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json_data['status'], "OK")
+        response = self.client.get('/fieldsdoc')
+        json_data = response.get_json()['_items'][0]
+        self.assertIn('longFieldName', json_data)
+        self.assertEqual(json_data['longFieldName'], "hello")
+        FieldsDoc.objects.delete()
+        # the same, but through mongoengine
+        FieldsDoc(n="hi").save()
+        response = self.client.get('/fieldsdoc')
+        json_data = response.get_json()['_items'][0]
+        self.assertIn('longFieldName', json_data)
+        self.assertEqual(json_data['longFieldName'], "hi")
+        FieldsDoc.objects.delete()

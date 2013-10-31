@@ -71,7 +71,8 @@ class MongoengineDataLayer(Mongo):
         if self._structure_in_model(model_cls):
             # cannot be resolved by calling 'only()'. We have to call exclude()
             # on all non-projected fields
-            non_projected = set(model_cls._fields.keys()) - projection
+            all_fields = set(model_cls._reverse_db_field_map.keys())
+            non_projected = all_fields - projection
             qry = qry.exclude(*non_projected)
         else:
             qry = qry.only(*projection)

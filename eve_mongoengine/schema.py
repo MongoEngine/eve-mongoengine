@@ -57,7 +57,8 @@ def create_schema(model_cls, lowercase=True):
                       treated as lowercase string of classname.
     """
     schema = {}
-    for fname, field in model_cls._fields.items():
+    for field in model_cls._fields.values():
+        fname = field.db_field
         if getattr(field, 'eve_field', False):
             # do not convert auto-added fields 'updated' and 'created'
             continue
