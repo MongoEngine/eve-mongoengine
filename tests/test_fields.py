@@ -85,6 +85,18 @@ class TestFields(BaseTest, unittest.TestCase):
         self.assertEqual(json_data["issues"][0], "ValidationError (ComplexDoc"\
                          ":None) (b.baz could not be converted to int: ['i'])")
 
+    def test_embedded_in_list(self):
+        # that's a tuff one
+        i1 = Inner(a="foo", b=789)
+        i2 = Inner(a="baz", b=456)
+        d = ComplexDoc(o=[i1, i2])
+        d.save()
+        response = self.client.get('/complexdoc')
+        try:
+            json_data = response.get_json()['_items'][0]
+            self.assertListEqual(json_data['o'], [{'a':"foo", 'b':789},{'a':"baz", 'b':456}])
+        finally:
+            d.delete()
 
     def test_dynamic_field(self):
         d = ComplexDoc(n=789)

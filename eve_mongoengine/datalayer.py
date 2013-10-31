@@ -20,7 +20,7 @@ from bson import ObjectId
 from flask import abort
 import pymongo
 from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
-                         DictField, MapField)
+                         DictField, MapField, ListField)
 
 # eve
 from eve.io.mongo import Mongo
@@ -38,6 +38,8 @@ class MongoengineDataLayer(Mongo):
 
     Most of functionality is copied from :class:`eve.io.mongo.Mongo`.
     """
+    _structured_fields = (EmbeddedDocumentField, DictField, MapField)
+
     def __init__(self, ext):
         self.conn = connect(ext.app.config['MONGO_DBNAME'],
                             host=ext.app.config['MONGO_HOST'],
@@ -50,8 +52,11 @@ class MongoengineDataLayer(Mongo):
         Returns True if model contains some kind of structured field.
         """
         for field in itervalues(model_cls._fields):
-            if isinstance(field, (EmbeddedDocumentField, DictField, MapField)):
+            if isinstance(field, self._structured_fields):
                 return True
+            elif isinstance(field, ListField):
+                if isinstance(field.field, self._structured_fields):
+                    return True
         return False
 
     def _projection(self, resource, projection, qry):

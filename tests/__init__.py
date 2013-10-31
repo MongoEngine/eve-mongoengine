@@ -42,6 +42,7 @@ class ComplexDoc(Document):
     l = ListField(StringField())
     n = DynamicField()
     r = ReferenceField(SimpleDoc)
+    o = ListField(EmbeddedDocumentField(Inner))
 
 class LimitedDoc(Document):
     # doc for testing field limits and properties
