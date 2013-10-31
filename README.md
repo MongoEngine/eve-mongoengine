@@ -1,6 +1,8 @@
 eve-mongoengine
 ===============
 
+[![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
+
 Eve-Mongoengine is and [Eve](https://github.com/nicolaiarocci/eve/) extension, which
 enables Mongoengine ODM models to be used as eve schema. If you use mongoengine
 in your application and simultaneously want to use eve, instead of writing schema
