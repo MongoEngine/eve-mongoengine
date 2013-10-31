@@ -17,7 +17,7 @@ from datetime import datetime
 
 import mongoengine
 
-from .schema import create_schema
+from .schema import SchemaMapper
 from .datalayer import MongoengineDataLayer
 from .struct import Settings
 from .validation import EveMongoengineValidator
@@ -69,10 +69,50 @@ class EveMongoengine(object):
         settings.update(my_default_settings)
         app = Eve(settings=settings)
         ext.init_app(app)
+
+    This class tries hard to be extendable and hackable as possible, every
+    possible value is either a method param (for IoC-DI) or class attribute,
+    which can be overwriten in subclass.
     """
+    #: Default HTTP methods allowed to manipulate with whole resources.
+    #: These are assigned to settings of every registered model, if not given
+    #: others.
+    default_resource_methods = ['GET', 'POST', 'DELETE']
+
+    #: Default HTTP methods allowed to manipulate with items (single records).
+    #: These are assigned to settings of every registered model, if not given
+    #: others.
+    default_item_methods = ['GET', 'PATCH', 'PUT', 'DELETE']
+
+    #: The class used as Eve validator, which is also one of Eve's constructor
+    #: params. In EveMongoengine, we need to overwrite it. If extending, assign
+    #: only subclasses of :class:`EveMongoengineValidator`.
+    validator_class = EveMongoengineValidator
+
+    #: Datalayer class - instance of this class is pushed to app.data attribute
+    #: and Eve does it's magic. See :class`datalayer.MongoengineDataLayer` for
+    #: more info.
+    datalayer_class = MongoengineDataLayer
+
+    #: The class used as settings dictionary. Usually subclass of dict with
+    #: tuned methods/behaviour.
+    settings_class = Settings
+
+    #: Mapper from mongoengine model into cerberus schema. This class may be
+    #: subclassed in the future to support new mongoenigne's fields.
+    schema_mapper_class = SchemaMapper
+
     def __init__(self):
-        self.data = None
         self.models = {}
+
+    def _get_date_func(self):
+        """
+        Returns function (or lambda) taking zero params and returning datetime
+        instance. By default it is datetime.now() with correction of
+        microseconds. Eve uses suprisingly datetime.utc_now(), which does not
+        respect time zone.
+        """
+        return lambda: datetime.now().replace(microsecond=0)
 
     def _parse_config(self):
         # parse app config
@@ -99,13 +139,13 @@ class EveMongoengine(object):
         """
         self.app = app
         # overwrite default eve.io.mongo.validation.Validator
-        app.validator = EveMongoengineValidator
+        app.validator = self.validator_class
         self._parse_config()
         # now we can fix all models
         for model_cls in itervalues(self.models):
             self.fix_model_class(model_cls)
         # overwrite default data layer to get proper mongoengine functionality
-        app.data = MongoengineDataLayer(self)
+        app.data = self.datalayer_class(self)
 
     def create_settings(self, models, lowercase=True):
         """
@@ -119,9 +159,9 @@ class EveMongoengine(object):
         :param lowercase: if true, all class names will be taken lowercase as
                           resource names. Default True.
         """
-        settings = Settings({
-            'RESOURCE_METHODS': ['GET', 'POST', 'DELETE'],
-            'ITEM_METHODS': ['GET', 'PATCH', 'PUT', 'DELETE']
+        settings = self.settings_class({
+            'RESOURCE_METHODS': list(self.default_resource_methods),
+            'ITEM_METHODS': list(self.default_item_methods)
         })
         domain = settings['DOMAIN'] = {}
         if not isinstance(models, (list, tuple)):
@@ -130,7 +170,8 @@ class EveMongoengine(object):
             if not issubclass(model_cls, mongoengine.Document):
                 raise TypeError("Class '%s' is not a subclass of "
                                 "mongoengine.Document." % model_cls.__name__)
-            schema = create_schema(model_cls, lowercase)
+            schema = self.schema_mapper_class.create_schema(model_cls,
+                                                            lowercase)
             resource_name = model_cls.__name__
             if lowercase:
                 resource_name = resource_name.lower()
@@ -151,13 +192,15 @@ class EveMongoengine(object):
         class. And even if they are, they may be of other field type or
         missbehave.
 
-        :param model_cls: mongoengine's model class to be fixed up.
+        :param model_cls: mongoengine's model class (instance of subclass of
+                          `mongoengine.Document`) to be fixed up.
         """
-        date_utc = lambda: datetime.now().replace(microsecond=0)
+        date_field_cls = mongoengine.DateTimeField
+        date_func = self._get_date_func()
         new_fields = {
             # TODO: updating last_updated field every time when saved
-            self.last_updated: mongoengine.DateTimeField(default=date_utc),
-            self.date_created: mongoengine.DateTimeField(default=date_utc)
+            self.last_updated: date_field_cls(default=date_func),
+            self.date_created: date_field_cls(default=date_func)
         }
         for attr_name, attr_value in iteritems(new_fields):
             # If the field does exist, we just check if it has right

@@ -41,6 +41,11 @@ class MongoengineDataLayer(Mongo):
     _structured_fields = (EmbeddedDocumentField, DictField, MapField)
 
     def __init__(self, ext):
+        """
+        Constructor.
+
+        :param ext: instance of :class:`EveMongoengine`.
+        """
         self.conn = connect(ext.app.config['MONGO_DBNAME'],
                             host=ext.app.config['MONGO_HOST'],
                             port=ext.app.config['MONGO_PORT'])
@@ -86,6 +91,9 @@ class MongoengineDataLayer(Mongo):
     def find(self, resource, req):
         """
         Seach for results and return feed of them.
+
+        :param resource: name of requested resource as string.
+        :param req: instance of :class:`eve.utils.ParsedRequest`.
         """
         qry = self.models[resource].objects
         if req.max_results:
