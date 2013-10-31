@@ -15,7 +15,12 @@ SETTINGS = {
 class Response(BaseResponse):
     def get_json(self):
         if 'application/json' in self.mimetype:
-            return json.loads(self.get_data())
+            data = self.get_data()
+            try:
+                data = data.decode('utf-8')
+            except UnicodeDecodeError:
+                pass
+            return json.loads(data)
         else:
             raise TypeError("Not an application/json response")
 

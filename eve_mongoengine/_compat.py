@@ -31,4 +31,3 @@ else:
     unicode = str
     bytes = bytes
     long = int
-
