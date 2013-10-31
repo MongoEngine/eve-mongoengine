@@ -3,7 +3,9 @@ python:
   - "3.3"
   - "2.7"
   - "2.6"
-install: pip install flake8
+install:
+  - pip install flake8
+  - pip install -r requirements.txt
 script: 
   - flake8 eve_mongoengine
   - python setup.py test

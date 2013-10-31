@@ -16,7 +16,6 @@ setup(
     platforms='any',
     install_requires=[
         'Eve>=0.1',
-        'pymongo==2.6.2',
         'Mongoengine>=0.8.4',
     ]
 )
