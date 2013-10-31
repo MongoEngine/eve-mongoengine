@@ -39,7 +39,7 @@ class EveMongoengineValidator(Validator):
         doc = model_cls(**document)
         try:
             doc.validate()
-        except ValidationError, e:
+        except ValidationError as e:
             self._error(str(e))
             return False
         return True

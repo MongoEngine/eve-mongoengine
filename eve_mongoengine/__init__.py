@@ -26,6 +26,9 @@ from .validation import EveMongoengineValidator
 # until eve#146 is fixed, we need this monkey-patch
 from eve import Eve
 import os
+import sys
+
+
 def _load_config(self):
     # load defaults
     self.config.from_object('eve.default_settings')
@@ -133,7 +136,6 @@ class EveMongoengine(object):
             self.models[resource_name] = model_cls
         return settings
 
-
     def fix_model_class(self, model_cls):
         """
         Adds necessary fields (updated and created) into model class
@@ -159,9 +161,9 @@ class EveMongoengine(object):
             if attr_name in model_cls._fields:
                 attr_value = model_cls._fields[attr_name]
                 if not isinstance(attr_value, mongoengine.DateTimeField):
-                    raise TypeError("Field '%s' is needed by Eve, but has "
-                                    "wrong type '%s'." % (attr_name,
-                                    attr_value.__class__.__name__))
+                    info = (attr_name,  attr_value.__class__.__name__)
+                    raise TypeError("Field '%s' is needed by Eve, but has"
+                                    " wrong type '%s'." % info)
                 continue
             # The way how we introduce new fields into model class is copied
             # out of mongoengine.base.DocumentMetaclass
@@ -184,7 +186,6 @@ class EveMongoengine(object):
 
             # this is just copied from mongoengine and frankly, i just dont
             # have a clue, what it does...
-            model_cls._fields_ordered = tuple(i[1] for i in sorted(
-                                        (v.creation_counter, v.name)
-                                        for v in model_cls._fields.itervalues()))
-
+            iterfields = model_cls._fields.itervalues()
+            created = [(v.creation_counter, v.name) for v in iterfields]
+            model_cls._fields_ordered = tuple(i[1] for i in sorted(created))

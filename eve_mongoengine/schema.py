@@ -10,7 +10,13 @@
 """
 
 
-from mongoengine import *
+from mongoengine import (StringField, IntField, FloatField, BooleanField,
+                         DateTimeField, ComplexDateTimeField, URLField,
+                         EmailField, LongField, DecimalField, ListField,
+                         EmbeddedDocumentField, SortedListField, DictField,
+                         MapField, UUIDField, ObjectIdField, LineStringField,
+                         GeoPointField, PointField, PolygonField, BinaryField,
+                         ReferenceField, DynamicField)
 
 _mongoengine_to_cerberus = {
     StringField: 'string',
@@ -71,20 +77,21 @@ def create_schema(model_cls, lowercase=True):
             if getattr(field, 'max_length', None) is not None:
                 fdict['maxlength'] = field.max_length
             if getattr(field, 'min_length', None) is not None:
-               fdict['minlength'] = field.min_length
+                fdict['minlength'] = field.min_length
             if getattr(field, 'max_value', None) is not None:
                 fdict['max'] = field.max_value
             if getattr(field, 'min_value', None) is not None:
-               fdict['min'] = field.min_value
+                fdict['min'] = field.min_value
             # special cases
             elif field.__class__ is ReferenceField:
                 # create data_relation schema
                 resource = field.document_type.__name__
                 if lowercase:
                     resource = resource.lower()
+                # FIXME: what if id is of other field name?
                 fdict['data_relation'] = {
                     'resource': resource,
-                    'field': '_id', #FIXME: what if id is other field?
+                    'field': '_id',
                     'embeddable': True
                 }
         elif field.__class__ is DynamicField:

@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+
 def _merge_dicts(d1, d2):
     """
     Helper function for merging dicts. This functino is called in
@@ -20,6 +21,7 @@ def _merge_dicts(d1, d2):
                 _merge_dicts(d1[key], value)
                 continue
         d1[key] = value
+
 
 class Settings(dict):
     """
