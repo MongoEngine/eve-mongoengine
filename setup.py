@@ -15,7 +15,7 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Eve>=0.1',
+        'Eve>=0.1.1',
         'Mongoengine>=0.8.4',
     ]
 )

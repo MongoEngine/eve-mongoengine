@@ -31,6 +31,7 @@ from eve import ID_FIELD
 # Python3 compatibility
 from ._compat import itervalues, iteritems
 
+
 class MongoengineDataLayer(Mongo):
     """
     Data layer for eve-mongoengine extension.

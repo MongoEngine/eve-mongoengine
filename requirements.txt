@@ -1,2 +1,2 @@
 mongoengine>=0.8.4
-git+https://github.com/nicolaiarocci/eve@develop
+Eve>=0.1.1
