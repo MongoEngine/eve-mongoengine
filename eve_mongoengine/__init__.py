@@ -59,6 +59,7 @@ class EveMongoengine(object):
     Acts as Flask extension and implements its 'protocol'.
 
     Usage::
+
         from eve_mongoengine import EveMongoengine
         from eve import Eve
 
@@ -139,6 +140,8 @@ class EveMongoengine(object):
 
     def fix_model_class(self, model_cls):
         """
+        Internal method invoked during registering new model.
+
         Adds necessary fields (updated and created) into model class
         to ensure Eve's default functionality.
 
