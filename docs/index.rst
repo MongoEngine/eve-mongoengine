@@ -19,6 +19,7 @@ Contents:
 .. toctree::
    :maxdepth: 1
 
+   features
    api
 
 
@@ -70,30 +71,4 @@ Usage
 
     # let's roll
     app.run()
-
-
-Validation
-----------
-
-By default, eve validates against cerberus schema. Because mongoengine has larger
-scale of validation possiblities, there are some cases, when cerberus is not enough.
-Eve-Mongoengine comes with fancy solution: all errors, which are catchable by cerberus,
-are catched by cerberus and mongoengine ones are catched by custom validator and
-returned in cerberus error format. Example of this case could be mongoengine's
-URLField, which does not have it's cerberus opposie. In this case, if you fill
-in wrong URL, you get mongoengine error message. Let's see an example with internet
-resource as a model::
-
-    class Resource(Document):
-        url = URLField()
-        author = StringField()
-
-And then if you make POST request with wrong URL::
-
-    $ curl -d '{"url": "not-an-url", "author": "John"}' -H 'Content-Type: application/json' http://my-eve-server/resource
-
-The response will contain::
-
-    {"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
-
 
