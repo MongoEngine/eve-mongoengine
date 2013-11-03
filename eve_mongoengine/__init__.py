@@ -90,7 +90,7 @@ class EveMongoengine(object):
     validator_class = EveMongoengineValidator
 
     #: Datalayer class - instance of this class is pushed to app.data attribute
-    #: and Eve does it's magic. See :class`datalayer.MongoengineDataLayer` for
+    #: and Eve does it's magic. See :class:`datalayer.MongoengineDataLayer` for
     #: more info.
     datalayer_class = MongoengineDataLayer
 
@@ -193,7 +193,7 @@ class EveMongoengine(object):
         missbehave.
 
         :param model_cls: mongoengine's model class (instance of subclass of
-                          `mongoengine.Document`) to be fixed up.
+                          :class:`mongoengine.Document`) to be fixed up.
         """
         date_field_cls = mongoengine.DateTimeField
         date_func = self._get_date_func()

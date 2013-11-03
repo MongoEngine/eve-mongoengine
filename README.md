@@ -3,13 +3,16 @@ eve-mongoengine
 
 [![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
 
-Eve-Mongoengine is and [Eve](https://github.com/nicolaiarocci/eve/) extension, which
-enables Mongoengine ODM models to be used as eve schema. If you use mongoengine
+[Eve-Mongoengine](http://eve-mongoengine.readthedocs.org/en/latest/) is an
+[Eve](https://github.com/nicolaiarocci/eve/) extension, which enables
+Mongoengine ODM models to be used as eve schema. If you use mongoengine
 in your application and simultaneously want to use eve, instead of writing schema
 again in cerberus format, you can use this extension, which takes your mongoengine
 models and auto-transforms it into creberus schema.
 
 **NOTE:** This extension depends on resolving eve's issue #146 (https://github.com/nicolaiarocci/eve/pull/146 - settings as dict).
+
+**Official documentation:** http://eve-mongoengine.readthedocs.org/en/latest/
 
 Install
 -------
