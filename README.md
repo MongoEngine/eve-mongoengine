@@ -24,6 +24,13 @@ It loads all dependencies as well.
 For development use virtualenv and editable copy of repisotory:
 `pip install -e git+https://github.com/hellerstanislav/eve-mongoengine#egg=eve-mongoengine`
 
+Features
+--------
+* Auto-generated schema out of your mongoengine models
+* Every operation goes through mongoengine -> you do not loose your mongoengine hooks
+* Support for most of mongoengine fields (see Limitations for more info)
+* Mongoengine validation layer not disconnected - use it as you wish
+
 Usage
 -----
 ```python
@@ -96,7 +103,6 @@ The response will contain
 ```
 {"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
 ```
-
 
 About mongoengine fields
 ------------------------
