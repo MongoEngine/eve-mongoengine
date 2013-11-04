@@ -50,6 +50,8 @@ def _load_config(self):
 Eve.load_config = _load_config
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+__version__ = "0.0.2"
+
 
 class EveMongoengine(object):
     """
