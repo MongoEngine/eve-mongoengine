@@ -34,7 +34,7 @@ class TestMongoengineFix(unittest.TestCase):
     def test_default_values(self):
         # test updated and created fields if they are correctly generated
         app = self.create_app(SimpleDoc)
-        now = datetime.now()
+        now = datetime.utcnow()
         d = SimpleDoc(a="xyz", b=29)
         self.assertEqual(type(d.updated), datetime)
         self.assertEqual(type(d.created), datetime)

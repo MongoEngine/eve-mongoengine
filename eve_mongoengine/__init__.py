@@ -105,15 +105,6 @@ class EveMongoengine(object):
     def __init__(self):
         self.models = {}
 
-    def _get_date_func(self):
-        """
-        Returns function (or lambda) taking zero params and returning datetime
-        instance. By default it is datetime.now() with correction of
-        microseconds. Eve uses suprisingly datetime.utc_now(), which does not
-        respect time zone.
-        """
-        return lambda: datetime.now().replace(microsecond=0)
-
     def _parse_config(self):
         # parse app config
         config = self.app.config
@@ -196,7 +187,7 @@ class EveMongoengine(object):
                           :class:`mongoengine.Document`) to be fixed up.
         """
         date_field_cls = mongoengine.DateTimeField
-        date_func = self._get_date_func()
+        date_func = lambda: datetime.utcnow().replace(microsecond=0)
         new_fields = {
             # TODO: updating last_updated field every time when saved
             self.last_updated: date_field_cls(default=date_func),
