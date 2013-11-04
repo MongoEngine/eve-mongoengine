@@ -57,17 +57,12 @@ Usage
         'MONGO_DBNAME': 'eve_mongoengine_test'
     }
 
-    # at first init extension
-    ext = EveMongoengine()
-    # create schema from model class
-    settings = ext.create_settings(Person)
-    # merge model schema with settings
-    settings.update(my_settings)
-
     # init application
-    app = Eve(settings=settings)
-    # do not forget to monkey-patch application!
-    ext.init_app(app)
+    app = Eve(settings=my_settings)
+    # init extension
+    ext = EveMongoengine(app)
+    # register model to eve
+    ext.add_model(Person)
 
     # let's roll
     app.run()

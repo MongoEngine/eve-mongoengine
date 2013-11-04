@@ -157,4 +157,4 @@ class TestFields(BaseTest, unittest.TestCase):
         # XXX: datalayer should handle this instead of relying on default _id,
         # but eve does not support it :(, we have to raise exception.
         with self.assertRaises(SchemaException):
-            self.ext.create_settings(PrimaryKeyDoc)
+            self.ext.add_model(PrimaryKeyDoc)

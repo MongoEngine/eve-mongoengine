@@ -13,11 +13,10 @@ class TestMongoengineFix(unittest.TestCase):
     Test fixing mongoengine classes for Eve's purposes.
     """
     def create_app(self, *models):
-        ext = EveMongoengine()
-        settings = ext.create_settings(models)
-        settings.update(SETTINGS)
-        app = Eve(settings=settings)
-        ext.init_app(app)
+        app = Eve(settings=SETTINGS)
+        app.debug = True
+        ext = EveMongoengine(app)
+        ext.add_model(models)
         return app.test_client()
 
     def assertDateTimeAlmostEqual(self, d1, d2, precission='minute'):

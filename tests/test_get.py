@@ -118,11 +118,10 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = self.client.get('/SimpleDoc')
         self.assertEqual(response.status_code, 404)
         # uppercase
-        ext = EveMongoengine()
-        settings = ext.create_settings([SimpleDoc], lowercase=False)
-        settings.update(SETTINGS)
-        app = Eve(settings=settings)
-        ext.init_app(app)
+        app = Eve(settings=SETTINGS)
+        app.debug = True
+        ext = EveMongoengine(app)
+        ext.add_model(SimpleDoc, lowercase=False)
         client = app.test_client()
         d = SimpleDoc(a='Tom', b=223).save()
         response = client.get('/SimpleDoc/')

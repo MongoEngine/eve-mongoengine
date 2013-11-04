@@ -9,7 +9,8 @@ from eve_mongoengine import EveMongoengine
 SETTINGS = {
     'MONGO_HOST': 'localhost',
     'MONGO_PORT': 27017,
-    'MONGO_DBNAME': 'eve_mongoengine_test'
+    'MONGO_DBNAME': 'eve_mongoengine_test',
+    'DOMAIN': {'eve-mongoengine': {}}
 }
 
 class Response(BaseResponse):
@@ -82,13 +83,11 @@ class PrimaryKeyDoc(Document):
 class BaseTest(object):
     @classmethod
     def setUpClass(cls):
-        ext = EveMongoengine()
-        settings = ext.create_settings([SimpleDoc, ComplexDoc, LimitedDoc,
-                                        FieldsDoc])
-        settings.update(SETTINGS)
-        app = Eve(settings=settings)
+        SETTINGS['DOMAIN'] = {'eve-mongoengine':{}}
+        app = Eve(settings=SETTINGS)
         app.debug = True
-        ext.init_app(app)
+        ext = EveMongoengine(app)
+        ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app

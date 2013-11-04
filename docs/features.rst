@@ -33,6 +33,36 @@ The response will contain::
 
     {"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
 
+
+Advanced model registration
+---------------------------
+If you want to use the name of model class "as is", use option ``lowercase=False``
+in ``add_model()`` method::
+
+    ext.add_model(Person, lowercase=False)
+
+Then you will have to ask the server for ``/Person/`` URL.
+
+In ``add_model()`` method you can add every possible parameter into resource settings.
+Even if you want to overwrite some settings, which generates eve-mongoengine under the hood,
+you can overwrite it this way::
+
+    ext.add_model(Person,                                       # model or models
+                  resource_methods=['GET'],                     # allow only GET
+                  cache_control="max-age=600; must-revalidate") # set max-age
+
+When you register more than one model at time, you need to encapsulate all models into list::
+
+    ext.add_model([Person, Car, House, Dog])
+
+**HTTP Methods**
+
+By default, all HTTP methods are allowed for registered classes:
+
+* resource methods: `GET, POST, DELETE`
+* item methods: `GET, PATCH, PUT, DELETE`
+
+
 About mongoengine fields
 ------------------------
 Because Eve contains default functionality, which maintains fields 'updated' and 'created',
@@ -48,9 +78,9 @@ are two more fields in your model class::
         name = mongoengine.StringField()
         age = mongoengine.IntField()
 
-    ext = EveMongoengine()
-    ... app init ...
-    ext.init_app(app)
+    app = Eve()
+    ext = EveMongoengine(app)
+    ext.add_model(Person)
 
     Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 

@@ -53,32 +53,5 @@ class TestSettingsDict(unittest.TestCase):
         self.check()
 
 
-class A(Document):
-    x = StringField()
-    y = ListField(IntField())
-
-DEFAULT_SETTINGS = {
-    'DOMAIN': {'a': {'schema': {'x': {'type': 'int'}}}}
-}
-
-class TestCreateSettings(unittest.TestCase):
-    def test_schema_merge(self):
-        ext = EveMongoengine()
-        settings = ext.create_settings(A)
-        settings.update(DEFAULT_SETTINGS)
-        expected = {
-          'DOMAIN': {
-            'a': {
-              'schema': {
-                'y': {'type': 'list'},
-                'x': {'type': 'int'} # NOT StringField
-              }
-            }
-          },
-          'ITEM_METHODS': ['GET', 'PATCH', 'PUT', 'DELETE'],
-          'RESOURCE_METHODS': ['GET', 'POST', 'DELETE']
-        }
-        self.assertDictEqual(settings, expected)
-
 if __name__ == "__main__":
     unittest.main()

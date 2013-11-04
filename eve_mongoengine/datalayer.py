@@ -77,7 +77,7 @@ class MongoengineDataLayer(Mongo):
             projection.remove('_id')
         projection.add('id')
 
-        model_cls = self.models[resource]
+        model_cls = self._get_model_cls(resource)
         if self._structure_in_model(model_cls):
             # cannot be resolved by calling 'only()'. We have to call exclude()
             # on all non-projected fields
@@ -88,6 +88,12 @@ class MongoengineDataLayer(Mongo):
             qry = qry.only(*projection)
         return qry
 
+    def _get_model_cls(self, resource):
+        try:
+            return self.models[resource]
+        except KeyError:
+            abort(404)
+
     def find(self, resource, req):
         """
         Seach for results and return feed of them.
@@ -95,7 +101,7 @@ class MongoengineDataLayer(Mongo):
         :param resource: name of requested resource as string.
         :param req: instance of :class:`eve.utils.ParsedRequest`.
         """
-        qry = self.models[resource].objects
+        qry = self._get_model_cls(resource).objects
         if req.max_results:
             qry = qry.limit(req.max_results)
         if req.page > 1:
@@ -156,7 +162,9 @@ class MongoengineDataLayer(Mongo):
                 # Returns a type error when {'_id': {...}}
                 pass
         datasource, filter_, projection = self._datasource_ex(resource, lookup)
-        qry = self.models[resource].objects
+
+        qry = self._get_model_cls(resource).objects
+
         if len(filter_) > 0:
             qry = qry.filter(__raw__=filter_)
         qry = self._projection(resource, projection, qry)
@@ -168,7 +176,7 @@ class MongoengineDataLayer(Mongo):
     def _doc_to_model(self, resource, doc):
         if '_id' in doc:
             doc['id'] = doc.pop('_id')
-        return self.models[resource](**doc)
+        return self._get_model_cls(resource)(**doc)
 
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""
@@ -205,7 +213,7 @@ class MongoengineDataLayer(Mongo):
         try:
             # FIXME: filters?
             kwargs = self._transform_updates_to_mongoengine_kwargs(updates)
-            qry = self.models[resource].objects(id=id_)
+            qry = self._get_model_cls(resource).objects(id=id_)
             qry.update_one(write_concern=self._wc(resource), **kwargs)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -230,7 +238,7 @@ class MongoengineDataLayer(Mongo):
         query = {ID_FIELD: ObjectId(id_)} if id_ else None
         datasource, filter_, _ = self._datasource_ex(resource, query)
         try:
-            model_cls = self.models[resource]
+            model_cls = self._get_model_cls(resource)
             if not filter_:
                 qry = model_cls.objects
             else:

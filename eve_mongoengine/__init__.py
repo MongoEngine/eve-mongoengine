@@ -63,12 +63,9 @@ class EveMongoengine(object):
         from eve_mongoengine import EveMongoengine
         from eve import Eve
 
-        my_default_settings = {'MONGO_DBNAME': 'test'}
-        ext = EveMongoengine()
-        settings = ext.create_settings([MyModel, MySuperModel])
-        settings.update(my_default_settings)
-        app = Eve(settings=settings)
-        ext.init_app(app)
+        app = Eve()
+        ext = EveMongoengine(app)
+        ext.add_model([MyModel, MySuperModel])
 
     This class tries hard to be extendable and hackable as possible, every
     possible value is either a method param (for IoC-DI) or class attribute,
@@ -102,8 +99,9 @@ class EveMongoengine(object):
     #: subclassed in the future to support new mongoenigne's fields.
     schema_mapper_class = SchemaMapper
 
-    def __init__(self):
+    def __init__(self, app):
         self.models = {}
+        self.init_app(app)
 
     def _parse_config(self):
         # parse app config
@@ -132,13 +130,21 @@ class EveMongoengine(object):
         # overwrite default eve.io.mongo.validation.Validator
         app.validator = self.validator_class
         self._parse_config()
-        # now we can fix all models
-        for model_cls in itervalues(self.models):
-            self.fix_model_class(model_cls)
         # overwrite default data layer to get proper mongoengine functionality
         app.data = self.datalayer_class(self)
 
-    def create_settings(self, models, lowercase=True):
+    def _set_default_settings(self, settings):
+        """
+        Initializes default settings options for registered model.
+        """
+        if 'resource_methods' not in settings:
+            # TODO: maybe get from self.app.supported_resource_methods
+            settings['resource_methods'] = list(self.default_resource_methods)
+        if 'item_methods' not in settings:
+            # TODO: maybe get from self.app.supported_item_methods
+            settings['item_methods'] = list(self.default_item_methods)
+
+    def add_model(self, models, lowercase=True, **settings):
         """
         Creates Eve settings for mongoengine model classes.
 
@@ -149,12 +155,10 @@ class EveMongoengine(object):
                       :class:`mongoengine.Document`).
         :param lowercase: if true, all class names will be taken lowercase as
                           resource names. Default True.
+        :param settings: any other keyword argument will be treated as param
+                         to settings dictionary.
         """
-        settings = self.settings_class({
-            'RESOURCE_METHODS': list(self.default_resource_methods),
-            'ITEM_METHODS': list(self.default_item_methods)
-        })
-        domain = settings['DOMAIN'] = {}
+        self._set_default_settings(settings)
         if not isinstance(models, (list, tuple)):
             models = [models]
         for model_cls in models:
@@ -166,9 +170,14 @@ class EveMongoengine(object):
             resource_name = model_cls.__name__
             if lowercase:
                 resource_name = resource_name.lower()
-            domain[resource_name] = {'schema': schema}
+            # create resource settings
+            resource_settings = Settings({'schema': schema})
+            resource_settings.update(settings)
+            # register to the app
+            self.app.register_resource(resource_name, resource_settings)
+            # add new fields to model class to get proper Eve functionality
+            self.fix_model_class(model_cls)
             self.models[resource_name] = model_cls
-        return settings
 
     def fix_model_class(self, model_cls):
         """

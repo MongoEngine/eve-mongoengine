@@ -10,7 +10,7 @@ in your application and simultaneously want to use eve, instead of writing schem
 again in cerberus format, you can use this extension, which takes your mongoengine
 models and auto-transforms it into creberus schema.
 
-**NOTE:** This extension depends on resolving eve's issue #146 (https://github.com/nicolaiarocci/eve/pull/146 - settings as dict).
+**NOTE:** Initialization API has been changed since version 0.0.1! 
 
 **Official documentation:** http://eve-mongoengine.readthedocs.org/en/latest/
 
@@ -31,6 +31,7 @@ Features
 * Support for most of mongoengine fields (see Limitations for more info)
 * Mongoengine validation layer not disconnected - use it as you wish
 
+
 Usage
 -----
 ```python
@@ -49,33 +50,45 @@ my_settings = {
     'MONGO_HOST': 'localhost',
     'MONGO_PORT': 27017,
     'MONGO_DBNAME': 'eve_mongoengine_test'
+    'DOMAIN': {'eve-mongoengine': {}} # sadly this is needed for eve
 }
 
-# at first init extension
-ext = EveMongoengine()
-# create schema from model class
-settings = ext.create_settings(Person)
-# merge model schema with settings
-settings.update(my_settings)
-
 # init application
-app = Eve(settings=settings)
-# do not forget to monkey-patch application!
-ext.init_app(app)
-
+app = Eve(settings=my_settings)
+# init extension
+ext = EveMongoengine(app)
+# register model to eve
+ext.add_model(Person)
 # let's roll
 app.run()
 ```
 Now the name of resource will be lowercase name of given class, in this example it will be
-`person`, so the request could be `/person/`. If you want to use the name of model class
-"as is", use option `lowercase=False` in `create_settings()` method:
+`person`, so the request could be `/person/`.
+
+
+Advanced model registration
+---------------------------
+If you want to use the name of model class "as is", use option `lowercase=False` in `add_model()` method:
 ```python
-ext.create_settings(Person, lowercase=False)
+ext.add_model(Person, lowercase=False)
 ```
 Then you will have to ask the server for `/Person/` URL.
 
-HTTP Methods
-------------
+In `add_model()` method you can add every possible parameter into resource settings.
+Even if you want to overwrite some settings, which generates eve-mongoengine under the hood,
+you can overwrite it this way:
+```python
+ext.add_model(Person,                                       # model or models
+              resource_methods=['GET'],                     # allow only GET
+              cache_control="max-age=600; must-revalidate") # set max-age
+```
+When you register more than one model at time, you need to encapsulate all models into list:
+```python
+ext.add_model([Person, Car, House, Dog])
+```
+
+**HTTP Methods**
+
 By default, all HTTP methods are allowed for registered classes:
 * resource methods: `GET, POST, DELETE`
 * item methods: `GET, PATCH, PUT, DELETE`
@@ -118,9 +131,9 @@ class Person(mongoengine.Document):
     name = mongoengine.StringField()
     age = mongoengine.IntField()
 
-ext = EveMongoengine()
-... app init ...
-ext.init_app(app)
+app = Eve()
+ext = EveMongoengine(app)
+ext.add_model(Person)
 
 Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 ```
