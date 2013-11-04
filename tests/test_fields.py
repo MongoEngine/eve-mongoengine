@@ -2,8 +2,11 @@
 import json
 import uuid
 import unittest
+
+from eve.exceptions import SchemaException
+
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
-                   WrongDoc, FieldsDoc, SETTINGS)
+                   WrongDoc, FieldsDoc, PrimaryKeyDoc, SETTINGS)
 from eve_mongoengine._compat import iteritems, long
 
 class TestFields(BaseTest, unittest.TestCase):
@@ -148,3 +151,10 @@ class TestFields(BaseTest, unittest.TestCase):
         self.assertIn('longFieldName', json_data)
         self.assertEqual(json_data['longFieldName'], "hi")
         FieldsDoc.objects.delete()
+
+    def test_custom_primary_key(self):
+        # test case, when custom id_field (primary key) is set.
+        # XXX: datalayer should handle this instead of relying on default _id,
+        # but eve does not support it :(, we have to raise exception.
+        with self.assertRaises(SchemaException):
+            self.ext.create_settings(PrimaryKeyDoc)

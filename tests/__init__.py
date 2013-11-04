@@ -74,17 +74,22 @@ class FieldsDoc(Document):
     m = PolygonField()
     n = StringField(db_field='longFieldName')
 
+class PrimaryKeyDoc(Document):
+    # special document for testing primary key
+    abc = StringField(db_field='ABC', primary_key=True)
+    x = IntField()
 
 class BaseTest(object):
     @classmethod
     def setUpClass(cls):
         ext = EveMongoengine()
-        settings = ext.create_settings([SimpleDoc, ComplexDoc,
-                                        LimitedDoc, FieldsDoc])
+        settings = ext.create_settings([SimpleDoc, ComplexDoc, LimitedDoc,
+                                        FieldsDoc])
         settings.update(SETTINGS)
         app = Eve(settings=settings)
         app.debug = True
         ext.init_app(app)
+        cls.ext = ext
         cls.client = app.test_client()
         cls.app = app
 

@@ -18,6 +18,8 @@ from mongoengine import (StringField, IntField, FloatField, BooleanField,
                          GeoPointField, PointField, PolygonField, BinaryField,
                          ReferenceField, DynamicField)
 
+from eve.exceptions import SchemaException
+
 
 class SchemaMapper(object):
     """
@@ -64,6 +66,11 @@ class SchemaMapper(object):
         """
         schema = {}
         for field in model_cls._fields.values():
+            if field.primary_key:
+                # defined custom primary key -> fail, cos eve doesnt support it
+                raise SchemaException("Custom primery key not allowed - eve "
+                                      "does not support different id fields "
+                                      "for resources.")
             fname = field.db_field
             if getattr(field, 'eve_field', False):
                 # Do not convert auto-added fields 'updated' and 'created'.
