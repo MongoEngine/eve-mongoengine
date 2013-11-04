@@ -28,7 +28,7 @@ Features
 --------
 * Auto-generated schema out of your mongoengine models
 * Every operation goes through mongoengine -> you do not loose your mongoengine hooks
-* Support for most of mongoengine fields (see Limitations for more info)
+* Support for most of mongoengine fields (see [Limitations](#limitations) for more info)
 * Mongoengine validation layer not disconnected - use it as you wish
 
 
@@ -139,3 +139,17 @@ Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 ```
 If you already have these fields in your model, Eve will probably scream at you, that it's not
 possible to have these fields in schema.
+
+Limitations
+-----------
+
+* You have to give Eve some dummy domain to shut him up. Without this he
+  will complain about empty domain.
+* You cannot use mongoengine's custom `primary_key` (because of Eve).
+* UUIDField not supported (because missing custom Encoder - see Eve#102).
+* Cannot use `GenericEmbeddedDocumentField, FileField, ImageField, SequenceField`.
+* Tested only on python 2.7 and 3.3.
+* If you update your document using mongoengine model (i.e. by calling `save()`,
+  the `updated` field wont be updated to current time. This is because there arent
+  any hooks bound to `save()` or `update()` methods and I consider this evil.
+
