@@ -23,32 +23,6 @@ from .struct import Settings
 from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# until eve#146 is fixed, we need this monkey-patch
-from eve import Eve
-import os
-import sys
-
-
-def _load_config(self):
-    # load defaults
-    self.config.from_object('eve.default_settings')
-    if isinstance(self.settings, dict):
-        self.config.update(self.settings)
-    else:
-        if os.path.isabs(self.settings):
-            pyfile = self.settings
-        else:
-            abspath = os.path.abspath(os.path.dirname(sys.argv[0]))
-            pyfile = os.path.join(abspath, self.settings)
-        self.config.from_pyfile(pyfile)
-
-    #overwrite settings with custom environment variable
-    envvar = 'EVE_SETTINGS'
-    if os.environ.get(envvar):
-        self.config.from_envvar(envvar)
-Eve.load_config = _load_config
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 __version__ = "0.0.2"
 
