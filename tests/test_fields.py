@@ -44,6 +44,13 @@ class TestFields(BaseTest, unittest.TestCase):
                                msg="ValidationError (FieldsDoc:None) (Invalid"\
                                    " Mail-address: invalid@email: ['b'])")
 
+    def test_uuid_field(self):
+        self._fixture_template(data_ok={'g': 'ddbec64f-3178-43ed-aee3-1455968f24ab'},
+                               data_fail={'g': 'foo-bar-baz'},
+                               msg="ValidationError (FieldsDoc:None) (Could "\
+                                   "not convert to UUID: badly formed hexade"\
+                                   "cimal UUID string: ['g'])")
+
     def test_long_field(self):
         self._fixture_template(data_ok={'c': long(999)})
 

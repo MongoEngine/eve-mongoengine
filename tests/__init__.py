@@ -65,7 +65,7 @@ class FieldsDoc(Document):
     d = DecimalField()
     e = SortedListField(IntField())
     f = MapField(StringField())
-    #g = UUIDField() # Not supported by eve yet, see #102
+    g = UUIDField()
     h = ObjectIdField()
     i = BinaryField()
 

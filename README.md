@@ -147,7 +147,6 @@ Limitations
 * You have to give Eve some dummy domain to shut him up. Without this he
   will complain about empty domain.
 * You cannot use mongoengine's custom `primary_key` (because of Eve).
-* UUIDField not supported (because missing custom Encoder - see Eve#102).
 * Cannot use `GenericEmbeddedDocumentField, FileField, ImageField, SequenceField`.
 * Tested only on python 2.7 and 3.3.
 * If you update your document using mongoengine model (i.e. by calling `save()`,

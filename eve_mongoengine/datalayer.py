@@ -13,6 +13,7 @@
 # builtin
 import ast
 import json
+from uuid import UUID
 
 # 3rd party
 from bson.errors import InvalidId
@@ -23,7 +24,7 @@ from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
                          DictField, MapField, ListField)
 
 # eve
-from eve.io.mongo import Mongo
+from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
 from eve.utils import config, debug_error_message, validate_filters
 from eve import ID_FIELD
@@ -32,12 +33,27 @@ from eve import ID_FIELD
 from ._compat import itervalues, iteritems
 
 
+class MongoengineJsonEncoder(MongoJSONEncoder):
+    """
+    Propretary JSON encoder to support special mongoengine's special fields.
+    """
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            # rendered as a string
+            return str(obj)
+        else:
+            # delegate rendering to base class method
+            return super(MongoengineJsonEncoder, self).default(obj)
+
+
 class MongoengineDataLayer(Mongo):
     """
     Data layer for eve-mongoengine extension.
 
     Most of functionality is copied from :class:`eve.io.mongo.Mongo`.
     """
+    json_encoder_class = MongoengineJsonEncoder
+
     _structured_fields = (EmbeddedDocumentField, DictField, MapField)
 
     def __init__(self, ext):
