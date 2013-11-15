@@ -6,7 +6,7 @@ Main features:
 
 * Auto-generated schema out of your mongoengine models
 * Every operation goes through mongoengine -> you do not loose your mongoengine hooks
-* Support for most of mongoengine fields (see Limitations for more info)
+* Support for most of mongoengine fields (see `Limitations`_ for more info)
 * Mongoengine validation layer not disconnected - use it as you wish
 
 Validation
@@ -109,3 +109,16 @@ DELETE item   :func:`QuerySet.delete()`
 
 So if you have some hook bound to save() method, it should be executed every
 POST and PUT call you make using Eve.
+
+
+Limitations
+-----------
+* You have to give Eve some dummy domain to shut him up. Without this he
+  will complain about empty domain.
+* You cannot use mongoengine's custom ``primary_key`` (because of Eve).
+* Cannot use ``GenericEmbeddedDocumentField, FileField, ImageField, SequenceField``.
+* Tested only on python 2.7 and 3.3.
+* If you update your document using mongoengine model (i.e. by calling ``save()``,
+  the ``updated`` field wont be updated to current time. This is because there arent
+  any hooks bound to ``save()`` or ``update()`` methods and I consider this evil.
+
