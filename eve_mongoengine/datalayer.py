@@ -33,6 +33,15 @@ from eve import ID_FIELD
 from ._compat import itervalues, iteritems
 
 
+def _itemize(maybe_dict):
+    if isinstance(maybe_dict, list):
+        return maybe_dict
+    elif isinstance(maybe_dict, dict):
+        return iteritems(maybe_dict)
+    else:
+        raise TypeError("Wrong type to itemize. Allowed lists and dicts.")
+
+
 class MongoengineJsonEncoder(MongoJSONEncoder):
     """
     Propretary JSON encoder to support special mongoengine's special fields.
@@ -123,19 +132,18 @@ class MongoengineDataLayer(Mongo):
         if req.page > 1:
             qry = qry.skip((req.page - 1) * req.max_results)
 
+        client_projection = {}
+        client_sort = {}
+        spec = {}
+
         # TODO sort syntax should probably be coherent with 'where': either
         # mongo-like # or python-like. Currently accepts only mongo-like sort
         # syntax.
         # TODO should validate on unknown sort fields (mongo driver doesn't
         # return an error)
         if req.sort:
-            sort = ast.literal_eval(req.sort)
-            for field, direction in iteritems(sort):
-                if direction < 0:
-                    field = "-%s" % field
-                qry = qry.order_by(field)
-        client_projection = {}
-        spec = {}
+            client_sort = ast.literal_eval(req.sort)
+
         if req.where:
             try:
                 spec = self._sanitize(json.loads(req.where))
@@ -157,8 +165,18 @@ class MongoengineDataLayer(Mongo):
                 abort(400, description=debug_error_message(
                     'Unable to parse `projection` clause: '+str(e)
                 ))
-        datasource, spec, projection = self._datasource_ex(resource, spec,
-                                                           client_projection)
+        datasource, spec, projection, sort = self._datasource_ex(
+            resource,
+            spec,
+            client_projection,
+            client_sort)
+
+        if sort:
+            for field, direction in _itemize(sort):
+                if direction < 0:
+                    field = "-%s" % field
+                qry = qry.order_by(field)
+
         if req.if_modified_since:
             spec[config.LAST_UPDATED] = \
                 {'$gt': req.if_modified_since}
@@ -177,7 +195,8 @@ class MongoengineDataLayer(Mongo):
             except (InvalidId, TypeError):
                 # Returns a type error when {'_id': {...}}
                 pass
-        datasource, filter_, projection = self._datasource_ex(resource, lookup)
+        datasource, filter_, projection, _ = self._datasource_ex(resource,
+                                                                 lookup)
 
         qry = self._get_model_cls(resource).objects
 
@@ -196,7 +215,7 @@ class MongoengineDataLayer(Mongo):
 
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""
-        datasource, filter_, _ = self._datasource_ex(resource)
+        datasource, filter_, _, _ = self._datasource_ex(resource)
         try:
             if isinstance(doc_or_docs, list):
                 ids = []
@@ -252,7 +271,7 @@ class MongoengineDataLayer(Mongo):
     def remove(self, resource, id_=None):
         """Called when performing DELETE request."""
         query = {ID_FIELD: ObjectId(id_)} if id_ else None
-        datasource, filter_, _ = self._datasource_ex(resource, query)
+        datasource, filter_, _, _ = self._datasource_ex(resource, query)
         try:
             model_cls = self._get_model_cls(resource)
             if not filter_:

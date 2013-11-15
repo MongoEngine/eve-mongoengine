@@ -75,15 +75,63 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         json_data = response.get_json()
         real = [x['a'] for x in json_data['_items']]
         expected = ['abc', 'abz']
-        self.assertListEqual(real, expected)
+        try:
+            self.assertListEqual(real, expected)
+        except Exception as e:
+            # reset
+            d.delete()
+            d2.delete()
+            raise
 
         response = self.client.get('/simpledoc?sort={"b":-1}')
         json_data = response.get_json()
         real = [x['b'] for x in json_data['_items']]
         expected = [3, -7]
-        self.assertListEqual(real, expected)
-        d.delete()
-        d2.delete()
+        try:
+            self.assertListEqual(real, expected)
+        finally:
+            d.delete()
+            d2.delete()
+
+    def test_find_all_default_sort(self):
+        s = self.app.config['DOMAIN']['simpledoc']['datasource']
+        d = SimpleDoc(a='abz', b=3).save()
+        d2 = SimpleDoc(a='abc', b=-7).save()
+
+        # set default sort to 'b', desc.
+        if 'default_sort' in s:
+            default = s['default_sort']
+        else:
+            default = []
+        s['default_sort'] = [('b', -1)]
+        self.app.set_defaults()
+        response = self.client.get('/simpledoc')
+        json_data = response.get_json()
+        real = [x['b'] for x in json_data['_items']]
+        expected = [3, -7]
+        try:
+            self.assertListEqual(real, expected)
+        except Exception as e:
+            # reset
+            s['default_sort'] = default
+            d.delete()
+            d2.delete()
+            raise
+
+        # set default sort to 'b', asc.
+        s['default_sort'] = [('b', 1)]
+        self.app.set_defaults()
+        response = self.client.get('/simpledoc')
+        json_data = response.get_json()
+        real = [x['b'] for x in json_data['_items']]
+        expected = [-7, 3]
+        try:        
+            self.assertListEqual(real, expected)
+        finally:
+            # reset
+            s['default_sort'] = default
+            d.delete()
+            d2.delete()
 
     def test_find_all_filtering(self):
         d = SimpleDoc(a='x', b=987).save()
