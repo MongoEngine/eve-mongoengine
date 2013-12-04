@@ -1,5 +1,5 @@
-eve-mongoengine 0.0.2 (unreleased)
-==================================
+eve-mongoengine 0.0.2
+=====================
 
 [![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
 [![Requirements Status](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements.png?branch=master)](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements/?branch=master)
