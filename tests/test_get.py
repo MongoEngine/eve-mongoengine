@@ -183,3 +183,14 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = client.get('/simpledoc/')
         self.assertEqual(response.status_code, 404)
 
+
+    def test_get_subresource(self):
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        d = ComplexDoc(l=['a', 'b'], r=s).save()
+        d2 = ComplexDoc(l=['c', 'd'], r=s).save()
+        response = self.client.get('/simpledoc/%s/complexdoc' % s.id)
+        self.assertEqual(response.status_code, 200)
+        json_data = response.get_json()
+        self.assertEqual(len(json_data['_items']), 2)
+        real = [x['l'] for x in json_data['_items']]
+        self.assertEqual(real, [['a', 'b'], ['c', 'd']])

@@ -119,12 +119,13 @@ class MongoengineDataLayer(Mongo):
         except KeyError:
             abort(404)
 
-    def find(self, resource, req):
+    def find(self, resource, req, sub_resource_lookup):
         """
         Seach for results and return feed of them.
 
         :param resource: name of requested resource as string.
         :param req: instance of :class:`eve.utils.ParsedRequest`.
+        :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
         qry = self._get_model_cls(resource).objects
         if req.max_results:
@@ -154,7 +155,12 @@ class MongoengineDataLayer(Mongo):
                     abort(400, description=debug_error_message(
                         'Unable to parse `where` clause'
                     ))
-            spec = self._mongotize(spec)
+
+        if sub_resource_lookup:
+            spec.update(sub_resource_lookup)
+
+        spec = self._mongotize(spec)
+
         bad_filter = validate_filters(spec, resource)
         if bad_filter:
             abort(400, bad_filter)

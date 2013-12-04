@@ -9,6 +9,7 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import copy
 
 from mongoengine import (StringField, IntField, FloatField, BooleanField,
                          DateTimeField, ComplexDateTimeField, URLField,
@@ -104,7 +105,6 @@ class SchemaMapper(object):
                     resource = field.document_type.__name__
                     if lowercase:
                         resource = resource.lower()
-                    # FIXME: what if id is of other field name?
                     fdict['data_relation'] = {
                         'resource': resource,
                         'field': '_id',
@@ -113,3 +113,22 @@ class SchemaMapper(object):
             elif field.__class__ is DynamicField:
                 fdict['allow_unknown'] = True
         return schema
+
+    @classmethod
+    def get_subresource_settings(cls, model_cls, resource_name,
+                                 resource_settings, lowercase=True):
+        """
+        Yields name of subresource domain and it's settings.
+        """
+        for field in model_cls._fields.values():
+            if field.__class__ is ReferenceField:
+                fname = field.db_field
+                subresource_settings = copy.deepcopy(resource_settings)
+                subresource = field.document_type.__name__
+                if lowercase:
+                    subresource = subresource.lower()
+                # FIXME what if id is of other type?
+                _url = '%s/<regex("[a-f0-9]{24}"):%s>/%s'
+                subresource_settings['url'] = _url % (subresource, fname,
+                                                      resource_name)
+                yield subresource+resource_name, subresource_settings

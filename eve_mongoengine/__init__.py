@@ -154,6 +154,12 @@ class EveMongoengine(object):
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
             self.models[resource_name] = model_cls
+            # add sub-resource functionality for every ReferenceField
+            subresources = self.schema_mapper_class.get_subresource_settings
+            for registration in subresources(model_cls, resource_name,
+                                             resource_settings, lowercase):
+                self.app.register_resource(*registration)
+                self.models[registration[0]] = model_cls
 
     def fix_model_class(self, model_cls):
         """

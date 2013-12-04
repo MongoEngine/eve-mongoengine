@@ -1,6 +1,7 @@
 
 from datetime import datetime
 import unittest
+import json
 
 from eve_mongoengine import EveMongoengine
 
@@ -103,3 +104,18 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         self.assertEqual(data[0]['status'], "OK")
         self.assertEqual(data[1]['status'], "ERR")
 
+    def test_post_subresource(self):
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        data = {'l': ['x', 'y', 'z'], 'r': str(s.id)}
+        post_url = '/simpledoc/%s/complexdoc' % s.id
+        response = self.client.post(post_url, data=json.dumps(data), content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        resp_json = response.get_json()
+        self.assertEqual(resp_json['status'], "OK")
+
+        # overeni, jestli tam opravdu je.
+        response = self.client.get('/simpledoc/%s/complexdoc' % s.id)
+        self.assertEqual(response.status_code, 200)
+        resp_json = response.get_json()
+        self.assertEqual(len(resp_json['_items']), 1)
+        self.assertEqual(resp_json['_items'][0]['l'], ['x', 'y', 'z'])
