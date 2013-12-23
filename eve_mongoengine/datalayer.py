@@ -278,10 +278,11 @@ class MongoengineDataLayer(Mongo):
                 'pymongo.errors.OperationFailure: %s' % e
             ))
 
-    def remove(self, resource, id_=None):
+    def remove(self, resource, lookup):
         """Called when performing DELETE request."""
-        query = {config.ID_FIELD: ObjectId(id_)} if id_ else None
-        datasource, filter_, _, _ = self._datasource_ex(resource, query)
+        lookup = self._mongotize(lookup, resource)
+        datasource, filter_, _, _ = self._datasource_ex(resource, lookup)
+
         try:
             model_cls = self._get_model_cls(resource)
             if not filter_:
