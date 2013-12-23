@@ -5,6 +5,7 @@ from operator import attrgetter
 from eve_mongoengine import EveMongoengine
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
                    WrongDoc, SETTINGS)
+from eve.utils import config
 
 class TestHttpGet(BaseTest, unittest.TestCase):
 
@@ -13,8 +14,8 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = self.client.get('/simpledoc/%s' % d.id)
         # has to return one record
         json_data = response.get_json()
-        self.assertIn('updated', json_data)
-        self.assertIn('created', json_data)
+        self.assertIn(config.LAST_UPDATED, json_data)
+        self.assertIn(config.DATE_CREATED, json_data)
         self.assertEqual(json_data['_id'], str(d.id))
         self.assertEqual(json_data['a'], 'Tom')
         self.assertEqual(json_data['b'], 223)
@@ -27,8 +28,8 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = self.client.get('/simpledoc/%s?projection={"a":1}' % d.id)
         # has to return one record
         json_data = response.get_json()
-        self.assertIn('updated', json_data)
-        self.assertIn('created', json_data)
+        self.assertIn(config.LAST_UPDATED, json_data)
+        self.assertIn(config.DATE_CREATED, json_data)
         self.assertNotIn('b', json_data)
         self.assertEqual(json_data['_id'], str(d.id))
         self.assertEqual(json_data['a'], 'Tom')
@@ -155,8 +156,8 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             emb = json_data['_items'][0]['r']
             self.assertEqual(emb['a'], expected['a'])
             self.assertEqual(emb['b'], expected['b'])
-            self.assertIn('created', emb)
-            self.assertIn('updated', emb)
+            self.assertIn(config.DATE_CREATED, emb)
+            self.assertIn(config.LAST_UPDATED, emb)
         finally:
             d.delete()
             s.delete()
@@ -175,7 +176,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = client.get('/SimpleDoc/')
         self.assertEqual(response.status_code, 200)
         json_data = response.get_json()
-        expected_url = json_data['_links']['self']['href']
+        expected_url = json_data[config.LINKS]['self']['href']
         if ':' in expected_url:
             expected_url = '/' + '/'.join( expected_url.split('/')[1:] )
         self.assertEqual(expected_url, '/SimpleDoc')

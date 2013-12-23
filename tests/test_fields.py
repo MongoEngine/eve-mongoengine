@@ -4,6 +4,7 @@ import uuid
 import unittest
 
 from eve.exceptions import SchemaException
+from eve.utils import config
 
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
                    WrongDoc, FieldsDoc, PrimaryKeyDoc, SETTINGS)
@@ -16,7 +17,7 @@ class TestFields(BaseTest, unittest.TestCase):
         if expected is None:
             expected = data_ok
         response = self.client.get('/fieldsdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         try:
             for key, value in iteritems(expected):
                 self.assertEqual(json_data[key], value)
@@ -29,27 +30,27 @@ class TestFields(BaseTest, unittest.TestCase):
                                     data=json.dumps(data_fail),
                                     content_type='application/json')
         json_data = response.get_json()
-        self.assertEqual(json_data['status'], "ERR")
-        self.assertListEqual(json_data['issues'], [msg])
+        self.assertEqual(json_data[config.STATUS], "ERR")
+        self.assertEqual(json_data[config.ISSUES], msg)
 
     def test_url_field(self):
         self._fixture_template(data_ok={'a':'http://google.com'},
                                data_fail={'a':'foobar'},
-                               msg="ValidationError (FieldsDoc:None) (Invalid"\
-                                   " URL: foobar: ['a'])")
+                               msg={'a': "ValidationError (FieldsDoc:None) (Invalid"\
+                                   " URL: foobar: ['a'])"})
 
     def test_email_field(self):
         self._fixture_template(data_ok={'b':'heller.stanislav@gmail.com'},
                                data_fail={'b':'invalid@email'},
-                               msg="ValidationError (FieldsDoc:None) (Invalid"\
-                                   " Mail-address: invalid@email: ['b'])")
+                               msg={'b': "ValidationError (FieldsDoc:None) (Invalid"\
+                                   " Mail-address: invalid@email: ['b'])"})
 
     def test_uuid_field(self):
         self._fixture_template(data_ok={'g': 'ddbec64f-3178-43ed-aee3-1455968f24ab'},
                                data_fail={'g': 'foo-bar-baz'},
-                               msg="ValidationError (FieldsDoc:None) (Could "\
+                               msg={'g': "ValidationError (FieldsDoc:None) (Could "\
                                    "not convert to UUID: badly formed hexade"\
-                                   "cimal UUID string: ['g'])")
+                                   "cimal UUID string: ['g'])"})
 
     def test_long_field(self):
         self._fixture_template(data_ok={'c': long(999)})
@@ -63,9 +64,9 @@ class TestFields(BaseTest, unittest.TestCase):
     def test_map_field(self):
         self._fixture_template(data_ok={'f': {'x': 'foo', 'y': 'bar'}},
                                data_fail={'f': {'x': 1}},
-                               msg="ValidationError (FieldsDoc:None) "\
+                               msg={'f': "ValidationError (FieldsDoc:None) "\
                                    "(x.StringField only accepts string "\
-                                   "values: ['f'])")
+                                   "values: ['f'])"})
 
 
     def test_embedded_document_field(self):
@@ -73,17 +74,17 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(i=i)
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertDictEqual(json_data['i'], {'a':"hihi", 'b':123})
         d.delete()
         # POST request
         response = self.client.post('/complexdoc/',
                                     data='{"i": {"a": "xaxa", "b":-555}}',
                                     content_type='application/json')
-        self.assertEqual(response.get_json()["status"], "OK")
+        self.assertEqual(response.get_json()[config.STATUS], "OK")
 
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertDictEqual(json_data['i'], {'a':"xaxa", 'b':-555})
 
         ComplexDoc.objects[0].delete()
@@ -91,8 +92,8 @@ class TestFields(BaseTest, unittest.TestCase):
                                     data='{"i": {"a": "bar", "b": "baz"}}',
                                     content_type='application/json')
         json_data = response.get_json()
-        self.assertEqual(json_data["status"], "ERR")
-        self.assertEqual(json_data["issues"][0], "ValidationError (ComplexDoc"\
+        self.assertEqual(json_data[config.STATUS], "ERR")
+        self.assertEqual(json_data[config.ISSUES]['i'], "ValidationError (ComplexDoc"\
                          ":None) (b.baz could not be converted to int: ['i'])")
 
     def test_embedded_in_list(self):
@@ -103,7 +104,7 @@ class TestFields(BaseTest, unittest.TestCase):
         d.save()
         response = self.client.get('/complexdoc')
         try:
-            json_data = response.get_json()['_items'][0]
+            json_data = response.get_json()[config.ITEMS][0]
             self.assertListEqual(json_data['o'], [{'a':"foo", 'b':789},{'a':"baz", 'b':456}])
         finally:
             d.delete()
@@ -112,7 +113,7 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(n=789)
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertEqual(json_data['n'], 789)
         # cleanup
         d.delete()
@@ -121,7 +122,7 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(d={'g':'good', 'h':'hoorai'})
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertDictEqual(json_data['d'], {'g':'good', 'h':'hoorai'})
         # cleanup
         d.delete()
@@ -132,7 +133,7 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(r=s)
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertEqual(json_data['r'], str(s.id))
         # cleanup
         d.delete()
@@ -145,16 +146,16 @@ class TestFields(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         json_data = response.get_json()
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json_data['status'], "OK")
+        self.assertEqual(json_data[config.STATUS], "OK")
         response = self.client.get('/fieldsdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertIn('longFieldName', json_data)
         self.assertEqual(json_data['longFieldName'], "hello")
         FieldsDoc.objects.delete()
         # the same, but through mongoengine
         FieldsDoc(n="hi").save()
         response = self.client.get('/fieldsdoc')
-        json_data = response.get_json()['_items'][0]
+        json_data = response.get_json()[config.ITEMS][0]
         self.assertIn('longFieldName', json_data)
         self.assertEqual(json_data['longFieldName'], "hi")
         FieldsDoc.objects.delete()

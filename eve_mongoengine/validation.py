@@ -40,6 +40,7 @@ class EveMongoengineValidator(Validator):
         try:
             doc.validate()
         except ValidationError as e:
-            self._error(str(e))
+            for field_name, error in e.errors.items():
+                self._error(field_name, str(e))
             return False
         return True

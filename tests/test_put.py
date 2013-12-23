@@ -1,5 +1,6 @@
 
 import unittest
+from eve.utils import config
 from tests import BaseTest, SimpleDoc
 
 class TestHttpPut(BaseTest, unittest.TestCase):
@@ -8,11 +9,11 @@ class TestHttpPut(BaseTest, unittest.TestCase):
                                     data='{"a": "jimmy", "b": 23}',
                                     content_type='application/json')
         json_data = response.get_json()
-        self.url = '/simpledoc/%s' % json_data['_id']
+        self.url = '/simpledoc/%s' % json_data[config.ID_FIELD]
         response = self.client.get(self.url).get_json()
-        self.etag = response['etag']
-        self._id = response['_id']
-        self.updated = response['updated']
+        self.etag = response[config.ETAG]
+        self._id = response[config.ID_FIELD]
+        self.updated = response[config.LAST_UPDATED]
 
     def tearDown(self):
         SimpleDoc.objects().delete()

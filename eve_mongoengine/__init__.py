@@ -24,7 +24,7 @@ from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 
 
 class EveMongoengine(object):
@@ -83,13 +83,13 @@ class EveMongoengine(object):
         # parse app config
         config = self.app.config
         try:
-            self.last_updated = config.LAST_UPDATED
-        except AttributeError:
-            self.last_updated = 'updated'
+            self.last_updated = config['LAST_UPDATED']
+        except KeyError:
+            self.last_updated = '_updated'
         try:
-            self.date_created = config.DATE_CREATED
-        except AttributeError:
-            self.date_created = 'created'
+            self.date_created = config['DATE_CREATED']
+        except KeyError:
+            self.date_created = '_created'
 
     def init_app(self, app):
         """
@@ -179,11 +179,18 @@ class EveMongoengine(object):
         """
         date_field_cls = mongoengine.DateTimeField
         date_func = lambda: datetime.utcnow().replace(microsecond=0)
+
+        # field names have to be non-prefixed
+        last_updated_field_name = self.last_updated.lstrip('_')
+        date_created_field_name = self.date_created.lstrip('_')
         new_fields = {
             # TODO: updating last_updated field every time when saved
-            self.last_updated: date_field_cls(default=date_func),
-            self.date_created: date_field_cls(default=date_func)
+            last_updated_field_name: date_field_cls(db_field=self.last_updated,
+                                                    default=date_func),
+            date_created_field_name: date_field_cls(db_field=self.date_created,
+                                                    default=date_func)
         }
+
         for attr_name, attr_value in iteritems(new_fields):
             # If the field does exist, we just check if it has right
             # type (mongoengine.DateTimeField) and pass

@@ -27,7 +27,6 @@ from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
 from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
 from eve.utils import config, debug_error_message, validate_filters
-from eve import ID_FIELD
 
 # Python3 compatibility
 from ._compat import itervalues, iteritems
@@ -95,11 +94,15 @@ class MongoengineDataLayer(Mongo):
         """
         if projection is None:
             return qry
-
-        # fix mongoengine's 'id' field (_id -> id)
         projection = set(projection.keys())
-        if '_id' in projection:
-            projection.remove('_id')
+
+        # strip special underscore prefixed attributes -> in mongoengine
+        # they arent prefixed
+        for attr in ('_id', '_created', '_updated'):
+            if attr in projection:
+                projection.remove(attr)
+                projection.add(attr.lstrip('_'))
+        # id has to be always there
         projection.add('id')
 
         model_cls = self._get_model_cls(resource)
@@ -159,7 +162,7 @@ class MongoengineDataLayer(Mongo):
         if sub_resource_lookup:
             spec.update(sub_resource_lookup)
 
-        spec = self._mongotize(spec)
+        spec = self._mongotize(spec, resource)
 
         bad_filter = validate_filters(spec, resource)
         if bad_filter:
@@ -197,7 +200,7 @@ class MongoengineDataLayer(Mongo):
         """
         if config.ID_FIELD in lookup:
             try:
-                lookup[ID_FIELD] = ObjectId(lookup[ID_FIELD])
+                lookup[config.ID_FIELD] = ObjectId(lookup[config.ID_FIELD])
             except (InvalidId, TypeError):
                 # Returns a type error when {'_id': {...}}
                 pass
@@ -247,7 +250,8 @@ class MongoengineDataLayer(Mongo):
         Transforms update dict to special mongoengine syntax with set__,
         unset__ etc.
         """
-        return dict((("set__%s" % k), v) for (k, v) in iteritems(updates))
+        nopfx = lambda x: x.lstrip('_')
+        return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""
@@ -276,7 +280,7 @@ class MongoengineDataLayer(Mongo):
 
     def remove(self, resource, id_=None):
         """Called when performing DELETE request."""
-        query = {ID_FIELD: ObjectId(id_)} if id_ else None
+        query = {config.ID_FIELD: ObjectId(id_)} if id_ else None
         datasource, filter_, _, _ = self._datasource_ex(resource, query)
         try:
             model_cls = self._get_model_cls(resource)
