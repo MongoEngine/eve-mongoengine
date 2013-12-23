@@ -115,7 +115,7 @@ $ curl -d '{"url": "not-an-url", "author": "John"}' -H 'Content-Type: applicatio
 ```
 The response will contain
 ```
-{"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
+{"_status": "ERR", "_issues": {'url': "ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"}}
 ```
 
 About mongoengine fields

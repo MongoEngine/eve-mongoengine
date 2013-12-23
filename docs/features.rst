@@ -31,7 +31,7 @@ And then if you make POST request with wrong URL::
 
 The response will contain::
 
-    {"status": "ERR", "issues": ["ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"]}
+    {"_status": "ERR", "_issues": {'url': "ValidationError (Resource:None) (Invalid URL: not-an-url: ['url'])"}}
 
 
 Advanced model registration
@@ -82,6 +82,8 @@ are two more fields in your model class::
     ext = EveMongoengine(app)
     ext.add_model(Person)
 
+    # Note that in db there are attributes '_updated' and '_created'.
+    # Mongoengine field names are without underscore prefix!
     Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 
 If you already have these fields in your model, Eve will probably scream at you, that
