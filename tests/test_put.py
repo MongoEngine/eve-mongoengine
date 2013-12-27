@@ -1,7 +1,8 @@
 
+import json
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc
 
 class TestHttpPut(BaseTest, unittest.TestCase):
     def setUp(self):
@@ -54,3 +55,24 @@ class TestHttpPut(BaseTest, unittest.TestCase):
         self.assertEqual(response['a'], "greg")
         self.assertNotIn('b', response)
 
+    def test_put_subresource(self):
+        # create new resource and subresource
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        d = ComplexDoc(l=['a', 'b'], r=s).save()
+
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        etag = response.get_json()[config.ETAG]
+        headers = [('If-Match', etag)]
+
+        # new putted document
+        put_data = {'l': ['x', 'y', 'z'], 'r': str(s.id)}
+        put_url = '/simpledoc/%s/complexdoc/%s' % (s.id, d.id)
+        response = self.client.put(put_url, data=json.dumps(put_data),
+                                   content_type='application/json', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        resp_json = response.get_json()
+        self.assertEqual(resp_json[config.STATUS], "OK")
+
+        # check, if really edited
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        self.assertListEqual(response.get_json()['l'], ['x', 'y', 'z'])

@@ -16,8 +16,6 @@ import json
 from uuid import UUID
 
 # 3rd party
-from bson.errors import InvalidId
-from bson import ObjectId
 from flask import abort
 import pymongo
 from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
@@ -198,15 +196,10 @@ class MongoengineDataLayer(Mongo):
         """
         Look for one object.
         """
-        if config.ID_FIELD in lookup:
-            try:
-                lookup[config.ID_FIELD] = ObjectId(lookup[config.ID_FIELD])
-            except (InvalidId, TypeError):
-                # Returns a type error when {'_id': {...}}
-                pass
+        # transform every field value to correct type for querying
+        lookup = self._mongotize(lookup, resource)
         datasource, filter_, projection, _ = self._datasource_ex(resource,
                                                                  lookup)
-
         qry = self._get_model_cls(resource).objects
 
         if len(filter_) > 0:
