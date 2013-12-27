@@ -58,7 +58,7 @@ class TestHttpPut(BaseTest, unittest.TestCase):
     def test_put_subresource(self):
         # create new resource and subresource
         s = SimpleDoc(a="Answer to everything", b=42).save()
-        d = ComplexDoc(l=['a', 'b'], r=s).save()
+        d = ComplexDoc(l=['a', 'b'], n=999, r=s).save()
 
         response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
         etag = response.get_json()[config.ETAG]
@@ -75,4 +75,9 @@ class TestHttpPut(BaseTest, unittest.TestCase):
 
         # check, if really edited
         response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
-        self.assertListEqual(response.get_json()['l'], ['x', 'y', 'z'])
+        json_data = response.get_json()
+        self.assertListEqual(json_data['l'], ['x', 'y', 'z'])
+        self.assertNotIn('n', json_data)
+
+        s.delete()
+        d.delete()

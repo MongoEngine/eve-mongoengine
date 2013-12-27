@@ -1,4 +1,5 @@
 
+import json
 import unittest
 from eve.utils import config
 from tests import BaseTest, SimpleDoc, ComplexDoc
@@ -82,4 +83,31 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(ComplexDoc.objects[0].l, ["m", "n"])
         response = self.do_patch(data='{"l": []}')
         self.assertEqual(ComplexDoc.objects[0].l, [])
-        
+
+    def test_patch_subresource(self):
+        # create new resource and subresource
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        d = ComplexDoc(l=['a', 'b'], n=999, r=s).save()
+
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        etag = response.get_json()[config.ETAG]
+        headers = [('If-Match', etag)]
+
+        # patch document
+        patch_data = {'l': ['x', 'y', 'z'], 'r': str(s.id)}
+        patch_url = '/simpledoc/%s/complexdoc/%s' % (s.id, d.id)
+        response = self.client.patch(patch_url, data=json.dumps(patch_data),
+                                     content_type='application/json', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        resp_json = response.get_json()
+        self.assertEqual(resp_json[config.STATUS], "OK")
+
+        # check, if really edited
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        json_data = response.get_json()
+        self.assertListEqual(json_data['l'], ['x', 'y', 'z'])
+        self.assertEqual(json_data['n'], 999)
+
+        # cleanup
+        s.delete()
+        d.delete()
