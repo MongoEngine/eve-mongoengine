@@ -1,7 +1,7 @@
 
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc
 
 class TestHttpDelete(BaseTest, unittest.TestCase):
     def setUp(self):
@@ -51,4 +51,38 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
     def test_delete_unknown_resource(self):
         response = self.delete('/unknown')
         self.assertEqual(response.status_code, 404)
-        
+
+    def test_delete_subresource_item(self):
+        # create new resource and subresource
+        s = SimpleDoc(a="Answer to everything", b=42).save()
+        d = ComplexDoc(l=['a', 'b'], n=999, r=s).save()
+
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        etag = response.get_json()[config.ETAG]
+        headers = [('If-Match', etag)]
+
+        # delete subresource
+        del_url = '/simpledoc/%s/complexdoc/%s' % (s.id, d.id)
+        response = self.client.delete(del_url, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        # check, if really deleted
+        response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
+        self.assertEqual(response.status_code, 404)
+        s.delete()
+
+    def test_delete_subresource(self):
+        # more subresources -> delete them all
+        s = SimpleDoc(a="James Bond", b=7).save()
+        c1 = ComplexDoc(l=['p', 'q', 'r'], n=1, r=s).save()
+        c2 = ComplexDoc(l=['s', 't', 'u'], n=2, r=s).save()
+
+        # delete subresources
+        del_url = '/simpledoc/%s/complexdoc' % s.id
+        response = self.client.delete(del_url)
+        self.assertEqual(response.status_code, 200)
+        # check, if really deleted
+        response = self.client.get('/simpledoc/%s/complexdoc' % s.id)
+        json_data = response.get_json()
+        self.assertEqual(json_data[config.ITEMS], [])
+        # cleanup
+        s.delete()
