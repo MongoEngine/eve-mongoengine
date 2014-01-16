@@ -112,6 +112,7 @@ class SchemaMapper(object):
                     }
             elif field.__class__ is DynamicField:
                 fdict['allow_unknown'] = True
+                fdict['type'] = 'dynamic'
         return schema
 
     @classmethod
