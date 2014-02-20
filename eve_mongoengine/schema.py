@@ -58,6 +58,18 @@ class SchemaMapper(object):
     }
 
     @classmethod
+    def _resolve_field_class(cls, field):
+        """
+        Resolves field classes, which are non-standard (derived from existing
+        ones) to get most of it's functionality.
+        If no appropriate class is found for this field, returns DynamicField.
+        """
+        for klass in field.__class__.mro():
+            if klass in cls._mongoengine_to_cerberus:
+                return klass
+        return DynamicField
+
+    @classmethod
     def create_schema(cls, model_cls, lowercase=True):
         """
         :param model_cls: Mongoengine model class, subclass of
@@ -82,8 +94,9 @@ class SchemaMapper(object):
                 # default id field, do not insert it into schema
                 continue
             schema[fname] = fdict = {}
-            if field.__class__ in cls._mongoengine_to_cerberus:
-                cerberus_type = cls._mongoengine_to_cerberus[field.__class__]
+            best_matching_cls = cls._resolve_field_class(field)
+            if best_matching_cls in cls._mongoengine_to_cerberus:
+                cerberus_type = cls._mongoengine_to_cerberus[best_matching_cls]
                 fdict['type'] = cerberus_type
                 if field.required:
                     fdict['required'] = True
@@ -100,7 +113,7 @@ class SchemaMapper(object):
                 if getattr(field, 'min_value', None) is not None:
                     fdict['min'] = field.min_value
                 # special cases
-                elif field.__class__ is ReferenceField:
+                if best_matching_cls is ReferenceField:
                     # create data_relation schema
                     resource = field.document_type.__name__
                     if lowercase:
@@ -110,7 +123,7 @@ class SchemaMapper(object):
                         'field': '_id',
                         'embeddable': True
                     }
-            elif field.__class__ is DynamicField:
+            elif best_matching_cls is DynamicField:
                 fdict['allow_unknown'] = True
                 fdict['type'] = 'dynamic'
         return schema

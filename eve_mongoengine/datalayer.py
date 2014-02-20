@@ -102,7 +102,6 @@ class MongoengineDataLayer(Mongo):
                 projection.add(attr.lstrip('_'))
         # id has to be always there
         projection.add('id')
-
         model_cls = self._get_model_cls(resource)
         if self._structure_in_model(model_cls):
             # cannot be resolved by calling 'only()'. We have to call exclude()

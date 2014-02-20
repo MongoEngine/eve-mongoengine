@@ -14,7 +14,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
                                     data='{"a": "jimmy", "b": 23}',
                                     content_type='application/json')
         #XXX: eve's fault: This should be 201 Created instead of 200 OK
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         post_data = response.get_json()
         self.assertEqual(post_data[config.STATUS], "OK")
         _id = post_data['_id']
@@ -63,7 +63,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
@@ -109,7 +109,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         data = {'l': ['x', 'y', 'z'], 'r': str(s.id)}
         post_url = '/simpledoc/%s/complexdoc' % s.id
         response = self.client.post(post_url, data=json.dumps(data), content_type='application/json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         resp_json = response.get_json()
         self.assertEqual(resp_json[config.STATUS], "OK")
 

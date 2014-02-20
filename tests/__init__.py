@@ -57,6 +57,9 @@ class LimitedDoc(Document):
 class WrongDoc(Document):
     updated = IntField() # this is bad name
 
+class FancyStringField(StringField):
+    pass
+
 class FieldsDoc(Document):
     # special document for testing any other field types
     a = URLField()
@@ -74,11 +77,13 @@ class FieldsDoc(Document):
     l = PointField()
     m = PolygonField()
     n = StringField(db_field='longFieldName')
+    o = FancyStringField()
 
 class PrimaryKeyDoc(Document):
     # special document for testing primary key
     abc = StringField(db_field='ABC', primary_key=True)
     x = IntField()
+
 
 class BaseTest(object):
     @classmethod

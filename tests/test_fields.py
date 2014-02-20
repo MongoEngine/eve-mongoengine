@@ -12,6 +12,9 @@ from eve_mongoengine._compat import iteritems, long
 
 class TestFields(BaseTest, unittest.TestCase):
 
+    def tearDown(self):
+        FieldsDoc.objects.delete()
+
     def _fixture_template(self, data_ok, expected=None, data_fail=None, msg=None):
         d = FieldsDoc(**data_ok).save()
         if expected is None:
@@ -113,19 +116,23 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(n=789)
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()[config.ITEMS][0]
-        self.assertEqual(json_data['n'], 789)
-        # cleanup
-        d.delete()
+        try:
+            json_data = response.get_json()[config.ITEMS][0]
+            self.assertEqual(json_data['n'], 789)
+        finally:
+            # cleanup
+            d.delete()
 
     def test_dict_field(self):
         d = ComplexDoc(d={'g':'good', 'h':'hoorai'})
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()[config.ITEMS][0]
-        self.assertDictEqual(json_data['d'], {'g':'good', 'h':'hoorai'})
-        # cleanup
-        d.delete()
+        try:
+            json_data = response.get_json()[config.ITEMS][0]
+            self.assertDictEqual(json_data['d'], {'g':'good', 'h':'hoorai'})
+        finally:
+            # cleanup
+            d.delete()
 
     def test_reference_field(self):
         s = SimpleDoc(a="samurai", b=911)
@@ -133,11 +140,13 @@ class TestFields(BaseTest, unittest.TestCase):
         d = ComplexDoc(r=s)
         d.save()
         response = self.client.get('/complexdoc')
-        json_data = response.get_json()[config.ITEMS][0]
-        self.assertEqual(json_data['r'], str(s.id))
-        # cleanup
-        d.delete()
-        s.delete()
+        try:
+            json_data = response.get_json()[config.ITEMS][0]
+            self.assertEqual(json_data['r'], str(s.id))
+        finally:
+            # cleanup
+            d.delete()
+            s.delete()
 
     def test_db_field_name(self):
         # test if eve returns fields named like in db, not in python
@@ -145,7 +154,7 @@ class TestFields(BaseTest, unittest.TestCase):
                                     data='{"longFieldName": "hello"}',
                                     content_type='application/json')
         json_data = response.get_json()
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         self.assertEqual(json_data[config.STATUS], "OK")
         response = self.client.get('/fieldsdoc')
         json_data = response.get_json()[config.ITEMS][0]
@@ -158,7 +167,14 @@ class TestFields(BaseTest, unittest.TestCase):
         json_data = response.get_json()[config.ITEMS][0]
         self.assertIn('longFieldName', json_data)
         self.assertEqual(json_data['longFieldName'], "hi")
-        FieldsDoc.objects.delete()
+
+    def test_non_standard_field(self):
+        # tests FancyStringField -> it should be considered as StringField
+        _type = self.app.config['DOMAIN']['fieldsdoc']['schema']['o']['type']
+        self.assertEqual(_type, 'string')
+        self._fixture_template(data_ok={'o':'Apples and oranges'},
+                               data_fail={'o': 1},
+                               msg={'o': "must be of string type"})
 
     def test_custom_primary_key(self):
         # test case, when custom id_field (primary key) is set.
