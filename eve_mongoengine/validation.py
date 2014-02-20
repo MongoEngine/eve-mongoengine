@@ -15,9 +15,10 @@
 """
 
 from flask import current_app as app
-from mongoengine import ValidationError
+from mongoengine import ValidationError, FileField
 
 from eve.io.mongo.validation import Validator
+from eve_mongoengine._compat import iteritems
 
 
 class EveMongoengineValidator(Validator):
@@ -37,6 +38,10 @@ class EveMongoengineValidator(Validator):
         # validate using mongoengine field validators
         model_cls = app.data.models[self.resource]
         doc = model_cls(**document)
+        # rewind all file-like's
+        for attr, field in iteritems(model_cls._fields):
+            if isinstance(field, FileField) and attr in document:
+                document[attr].stream.seek(0)
         try:
             doc.validate()
         except ValidationError as e:

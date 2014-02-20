@@ -30,8 +30,9 @@ Features
 * Auto-generated schema out of your mongoengine models
 * Every operation goes through mongoengine -> you do not loose your mongoengine hooks
 * Support for most of mongoengine fields (see [Limitations](#limitations) for more info)
+* Support for your user-defined fields (as far as they are derived from some Mongoengine's non-base field)
 * Mongoengine validation layer not disconnected - use it as you wish
-
+* Partial support for eve's media - you can use ``FileField`` for this purpose (again see [Limitations](#limitations) for more info)
 
 Usage
 -----
@@ -147,7 +148,10 @@ Limitations
 * You have to give Eve some dummy domain to shut him up. Without this he
   will complain about empty domain.
 * You cannot use mongoengine's custom `primary_key` (because of Eve).
-* Cannot use `GenericEmbeddedDocumentField, FileField, ImageField, SequenceField`.
+* Cannot use `GenericEmbeddedDocumentField and SequenceField`.
+* You can use FileField (tested) and ImageField (not tested yet), but
+  operation with files handles Eve's GridFS layer, not mongoengine's
+  GridFSProxy!
 * Tested only on python 2.7 and 3.3.
 * If you update your document using mongoengine model (i.e. by calling `save()`,
   the `updated` field wont be updated to current time. This is because there arent

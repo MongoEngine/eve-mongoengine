@@ -18,8 +18,9 @@ from uuid import UUID
 # 3rd party
 from flask import abort
 import pymongo
-from mongoengine import (connect, DoesNotExist, EmbeddedDocumentField,
-                         DictField, MapField, ListField)
+from mongoengine import (DoesNotExist, EmbeddedDocumentField, DictField,
+                         MapField, ListField, FileField)
+from mongoengine.connection import get_db, connect
 
 # eve
 from eve.io.mongo import Mongo, MongoJSONEncoder
@@ -73,6 +74,10 @@ class MongoengineDataLayer(Mongo):
                             port=ext.app.config['MONGO_PORT'])
         self.models = ext.models
         self.app = ext.app
+        # create dummy driver instead of PyMongo, which causes errors
+        # when instantiating after config was initialized
+        self.driver = type('Driver', (), {})()
+        self.driver.db = get_db()
 
     def _structure_in_model(self, model_cls):
         """
@@ -212,7 +217,21 @@ class MongoengineDataLayer(Mongo):
     def _doc_to_model(self, resource, doc):
         if '_id' in doc:
             doc['id'] = doc.pop('_id')
-        return self._get_model_cls(resource)(**doc)
+        cls = self._get_model_cls(resource)
+        instance = cls(**doc)
+        for attr, field in iteritems(cls._fields):
+            # Inject GridFSProxy object into the instance for every FileField.
+            # This is because the Eve's GridFS layer does not work with the
+            # model object, but handles insertion in his own workspace. Sadly,
+            # there's no way how to work around this, so we need to do this
+            # special hack..
+            if isinstance(field, FileField):
+                if attr in doc:
+                    proxy = field.get_proxy_obj(key=field.name,
+                                                instance=instance)
+                    proxy.grid_id = doc[attr]
+                    instance._data[attr] = proxy
+        return instance
 
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""

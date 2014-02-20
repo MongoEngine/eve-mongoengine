@@ -78,6 +78,7 @@ class FieldsDoc(Document):
     m = PolygonField()
     n = StringField(db_field='longFieldName')
     o = FancyStringField()
+    p = FileField()
 
 class PrimaryKeyDoc(Document):
     # special document for testing primary key

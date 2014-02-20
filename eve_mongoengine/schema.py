@@ -17,7 +17,7 @@ from mongoengine import (StringField, IntField, FloatField, BooleanField,
                          EmbeddedDocumentField, SortedListField, DictField,
                          MapField, UUIDField, ObjectIdField, LineStringField,
                          GeoPointField, PointField, PolygonField, BinaryField,
-                         ReferenceField, DynamicField)
+                         ReferenceField, DynamicField, FileField)
 
 from eve.exceptions import SchemaException
 
@@ -50,10 +50,11 @@ class SchemaMapper(object):
         PointField: 'dict',
         PolygonField: 'dict',
         BinaryField: 'string',
-        ReferenceField: 'objectid'
+        ReferenceField: 'objectid',
+        FileField: 'media'
 
         #NOT SUPPORTED:
-        # FileField, ImageField, SequenceField
+        # ImageField, SequenceField
         # GenericEmbeddedDocumentField
     }
 
