@@ -90,6 +90,33 @@ If you already have these fields in your model, Eve will probably scream at you,
 it's not possible to have these fields in schema.
 
 
+User-defined fields
+-------------------
+Sometimes you want to use your special kind of field, say ``HelloField``, which
+is build for your specific purpose. So how does eve-mongoengine know how to deal
+with it when you register a class with that field? Let have a look...
+
+Say ``HelloField`` is defined like this::
+
+    from mongoengine import StringField
+
+    class HelloField(StringField):
+        """
+        Allmighty string field, which counts number of 'Hello's in the
+        string and throws exception if there are less than 2 'Hello's.
+        """
+
+Fancy, right? :) Well...not at all. But as an example it's fine.
+So what eve-mongoengine does with this? It checks the field and recognizes
+that it's non-standard field class. Then it looks into class bases and tries
+to get some known field class out of there. In this example the field will
+be considered as ``{'type': 'string'}``. Simple.
+
+Keep in mind that eve-mongoengine knows how to deal with only these fields,
+which are derived from non-BaseField classes, everything other will be
+considered as ``DynamicField``.
+
+
 Mongoengine hooks
 -----------------
 
@@ -118,7 +145,7 @@ Limitations
 * You have to give Eve some dummy domain to shut him up. Without this he
   will complain about empty domain.
 * You cannot use mongoengine's custom ``primary_key`` (because of Eve).
-* Cannot use ``GenericEmbeddedDocumentField, FileField, ImageField, SequenceField``.
+* Cannot use ``GenericEmbeddedDocumentField, SequenceField``.
 * Tested only on python 2.7 and 3.3.
 * If you update your document using mongoengine model (i.e. by calling ``save()``,
   the ``updated`` field wont be updated to current time. This is because there arent
