@@ -210,7 +210,11 @@ class MongoengineDataLayer(Mongo):
             qry = qry.filter(__raw__=filter_)
         qry = self._projection(resource, projection, qry)
         try:
-            return qry.as_pymongo().get()
+            doc = qry.as_pymongo().get()
+            for attr, value in iteritems(dict(doc)):
+                if isinstance(value, (list, dict)) and not value:
+                    del doc[attr]
+            return doc
         except DoesNotExist:
             return None
 
@@ -243,10 +247,12 @@ class MongoengineDataLayer(Mongo):
                     model = self._doc_to_model(resource, doc)
                     model.save(write_concern=self._wc(resource))
                     ids.append(model.id)
+                    doc[config.ID_FIELD] = model.id
                 return ids
             else:
                 model = self._doc_to_model(resource, doc_or_docs)
                 model.save(write_concern=self._wc(resource))
+                doc_or_docs[config.ID] = model.id
                 return model.id
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an
