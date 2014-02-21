@@ -6,7 +6,7 @@
     This module implements eve's data layer which uses mongoengine models
     instead of direct pymongo access.
 
-    :copyright: (c) 2013 by Stanislav Heller.
+    :copyright: (c) 2014 by Stanislav Heller.
     :license: BSD, see LICENSE for more details.
 """
 

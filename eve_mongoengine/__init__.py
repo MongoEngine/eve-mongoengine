@@ -9,7 +9,7 @@
     cerberus format, you can use this extension, which takes your mongoengine
     models and auto-transforms it into creberus schema.
 
-    :copyright: (c) 2013 by Stanislav Heller.
+    :copyright: (c) 2014 by Stanislav Heller.
     :license: BSD, see LICENSE for more details.
 """
 
@@ -24,7 +24,7 @@ from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
 
-__version__ = "0.0.3-dev"
+__version__ = "0.0.3"
 
 
 class EveMongoengine(object):

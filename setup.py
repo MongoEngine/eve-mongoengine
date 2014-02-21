@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Eve-Mongoengine',
-    version='0.0.3-dev',
+    version='0.0.3',
     url='https://github.com/hellerstanislav/eve-mongoengine',
     author='Stanislav Heller',
     author_email='heller.stanislav@gmail.com',

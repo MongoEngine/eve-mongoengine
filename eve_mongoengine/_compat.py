@@ -1,4 +1,13 @@
-"""Internal module for Python 2 backwards compatibility."""
+
+"""
+    eve_mongoengine._compat
+    ~~~~~~~~~~~~~~~~~~~~~~~
+
+    Internal module for Python 2 backwards compatibility
+
+    :copyright: (c) 2014 by Stanislav Heller.
+    :license: BSD, see LICENSE for more details.
+"""
 
 # flake8: noqa
 

@@ -10,7 +10,7 @@
     The purpose of this module is to enable validation for special mongoengine
     fields.
 
-    :copyright: (c) 2013 by Stanislav Heller.
+    :copyright: (c) 2014 by Stanislav Heller.
     :license: BSD, see LICENSE for more details.
 """
 
