@@ -53,7 +53,7 @@ class SchemaMapper(object):
         ReferenceField: 'objectid',
         FileField: 'media'
 
-        #NOT SUPPORTED:
+        # NOT SUPPORTED:
         # ImageField, SequenceField
         # GenericEmbeddedDocumentField
     }
