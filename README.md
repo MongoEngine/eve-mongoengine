@@ -1,4 +1,4 @@
-eve-mongoengine 0.0.3
+eve-mongoengine 0.0.4
 =====================
 
 [![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
