@@ -85,6 +85,11 @@ class PrimaryKeyDoc(Document):
     abc = StringField(db_field='ABC', primary_key=True)
     x = IntField()
 
+class NonStructuredDoc(Document):
+    # special document with custom db_field but without
+    # any structured field (listField, dictField etc.)
+    new_york = StringField(db_field='NewYork')
+
 
 class BaseTest(object):
     @classmethod
@@ -93,7 +98,8 @@ class BaseTest(object):
         app = Eve(settings=SETTINGS)
         app.debug = True
         ext = EveMongoengine(app)
-        ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc])
+        ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc,
+                       NonStructuredDoc])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app

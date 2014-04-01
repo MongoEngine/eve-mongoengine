@@ -4,7 +4,7 @@ import unittest
 from operator import attrgetter
 from eve_mongoengine import EveMongoengine
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
-                   WrongDoc, SETTINGS)
+                   WrongDoc, NonStructuredDoc, SETTINGS)
 from eve.utils import config
 
 class TestHttpGet(BaseTest, unittest.TestCase):
@@ -39,6 +39,13 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         response = self.client.get('/simpledoc/abcdef')
         self.assertEqual(response.status_code, 404)
         
+    def test_projection_on_non_structured_doc(self):
+        d = NonStructuredDoc(new_york="great").save()
+        response = self.client.get('/nonstructureddoc/%s' % str(d.id))
+        self.assertEqual(response.status_code, 200)
+        json_data = response.get_json()
+        self.assertIn('NewYork', json_data)
+        self.assertEqual(json_data['NewYork'], 'great')
 
     def test_find_all(self):
         _all = []

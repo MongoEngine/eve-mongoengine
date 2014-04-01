@@ -115,6 +115,10 @@ class MongoengineDataLayer(Mongo):
             non_projected = all_fields - projection
             qry = qry.exclude(*non_projected)
         else:
+            projection.discard('id')
+            rev_map = model_cls._reverse_db_field_map
+            projection = [rev_map[field] for field in projection]
+            projection.append('id')
             qry = qry.only(*projection)
         return qry
 
