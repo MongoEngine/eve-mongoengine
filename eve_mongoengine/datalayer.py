@@ -112,6 +112,8 @@ class MongoengineDataLayer(Mongo):
             # cannot be resolved by calling 'only()'. We have to call exclude()
             # on all non-projected fields
             all_fields = set(model_cls._reverse_db_field_map.keys())
+            # _id cannot be resolvable (this happens if inheritance is on)
+            all_fields.discard('_id')
             non_projected = all_fields - projection
             qry = qry.exclude(*non_projected)
         else:

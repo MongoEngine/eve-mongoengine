@@ -29,8 +29,15 @@ class Response(BaseResponse):
 Eve.response_class = Response
 
 class SimpleDoc(Document):
+    meta = {
+        'allow_inheritance': True
+    }
     a = StringField()
     b = IntField()
+
+class Inherited(SimpleDoc):
+    c = StringField(db_field='C')
+    d = DictField()
 
 class Inner(EmbeddedDocument):
     a = StringField()
@@ -99,7 +106,7 @@ class BaseTest(object):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc,
-                       NonStructuredDoc])
+                       NonStructuredDoc, Inherited])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app

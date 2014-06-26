@@ -4,7 +4,7 @@ import unittest
 from operator import attrgetter
 from eve_mongoengine import EveMongoengine
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
-                   WrongDoc, NonStructuredDoc, SETTINGS)
+                   WrongDoc, NonStructuredDoc, Inherited, SETTINGS)
 from eve.utils import config
 
 class TestHttpGet(BaseTest, unittest.TestCase):
@@ -202,3 +202,14 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertEqual(len(json_data['_items']), 2)
         real = [x['l'] for x in json_data['_items']]
         self.assertEqual(real, [['a', 'b'], ['c', 'd']])
+
+
+    def test_inherited(self):
+        # tests if inherited documents behave the same way
+        i = Inherited(a='Answer', b=42, c='BarBaz').save()
+        response = self.client.get('/inherited/%s/' % i.id)
+        self.assertIn('C', response.get_json())
+        self.assertEqual(response.status_code, 200)
+        # cannot throw mongoengine.LookUpError!
+        response = self.client.get('/inherited/')
+        self.assertEqual(response.status_code, 200)
