@@ -1,4 +1,4 @@
-eve-mongoengine 0.0.4
+eve-mongoengine 0.0.5
 =====================
 
 [![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
@@ -10,8 +10,6 @@ Mongoengine ODM models to be used as eve schema. If you use mongoengine
 in your application and simultaneously want to use eve, instead of writing schema
 again in cerberus format, you can use this extension, which takes your mongoengine
 models and auto-transforms it into creberus schema.
-
-**NOTE:** Initialization API has been changed since version 0.0.1! 
 
 **Official documentation:** http://eve-mongoengine.readthedocs.org/en/latest/
 

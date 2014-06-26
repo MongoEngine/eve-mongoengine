@@ -24,7 +24,7 @@ from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
 
-__version__ = "0.0.4"
+__version__ = "0.0.5"
 
 
 class EveMongoengine(object):
