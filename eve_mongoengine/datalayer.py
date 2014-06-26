@@ -41,6 +41,26 @@ def _itemize(maybe_dict):
         raise TypeError("Wrong type to itemize. Allowed lists and dicts.")
 
 
+class PymongoQuerySet(object):
+    """
+    Dummy mongoenigne-like QuerySet behaving just like queryset
+    with as_pymongo() called, but returning ALL fields in subdocuments
+    (which as_pymongo() somehow filters).
+    """
+    def __init__(self, qs):
+        self._qs = qs
+
+    def __iter__(self):
+        def iterate(obj):
+            qs = object.__getattribute__(obj, '_qs')
+            for doc in qs:
+                yield dict(doc.to_mongo())
+        return iterate(self)
+
+    def __getattribute__(self, name):
+        return getattr(object.__getattribute__(self, '_qs'), name)
+
+
 class MongoengineJsonEncoder(MongoJSONEncoder):
     """
     Propretary JSON encoder to support special mongoengine's special fields.
@@ -118,22 +138,12 @@ class MongoengineDataLayer(Mongo):
                 projection.remove(attr)
                 projection.add(attr.lstrip('_'))
         # id has to be always there
-        projection.add('id')
         model_cls = self._get_model_cls(resource)
-        if self._structure_in_model(model_cls):
-            # cannot be resolved by calling 'only()'. We have to call exclude()
-            # on all non-projected fields
-            all_fields = set(model_cls._reverse_db_field_map.keys())
-            # _id cannot be resolvable (this happens if inheritance is on)
-            all_fields.discard('_id')
-            non_projected = all_fields - projection
-            qry = qry.exclude(*non_projected)
-        else:
-            projection.discard('id')
-            rev_map = model_cls._reverse_db_field_map
-            projection = [rev_map[field] for field in projection]
-            projection.append('id')
-            qry = qry.only(*projection)
+        projection.discard('id')
+        rev_map = model_cls._reverse_db_field_map
+        projection = [rev_map[field] for field in projection]
+        projection.append('id')
+        qry = qry.only(*projection)
         return qry
 
     def _get_model_cls(self, resource):
@@ -144,17 +154,13 @@ class MongoengineDataLayer(Mongo):
 
     def find(self, resource, req, sub_resource_lookup):
         """
-        Seach for results and return feed of them.
+        Seach for results and return list of them.
 
         :param resource: name of requested resource as string.
         :param req: instance of :class:`eve.utils.ParsedRequest`.
         :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
         qry = self._get_model_cls(resource).objects
-        if req.max_results:
-            qry = qry.limit(req.max_results)
-        if req.page > 1:
-            qry = qry.skip((req.page - 1) * req.max_results)
 
         client_projection = {}
         client_sort = {}
@@ -199,20 +205,26 @@ class MongoengineDataLayer(Mongo):
             spec,
             client_projection,
             client_sort)
-
+        # apply ordering
         if sort:
             for field, direction in _itemize(sort):
                 if direction < 0:
                     field = "-%s" % field
                 qry = qry.order_by(field)
-
+        # apply filters
         if req.if_modified_since:
             spec[config.LAST_UPDATED] = \
                 {'$gt': req.if_modified_since}
         if len(spec) > 0:
             qry = qry.filter(__raw__=spec)
+        # apply projection
         qry = self._projection(resource, projection, qry)
-        return qry.as_pymongo()
+        # apply limits
+        if req.max_results:
+            qry = qry.limit(req.max_results)
+        if req.page > 1:
+            qry = qry.skip((req.page - 1) * req.max_results)
+        return PymongoQuerySet(qry)
 
     def find_one(self, resource, **lookup):
         """
@@ -228,7 +240,7 @@ class MongoengineDataLayer(Mongo):
             qry = qry.filter(__raw__=filter_)
         qry = self._projection(resource, projection, qry)
         try:
-            doc = qry.as_pymongo().get()
+            doc = dict(qry.get().to_mongo())
             for attr, value in iteritems(dict(doc)):
                 if isinstance(value, (list, dict)) and not value:
                     del doc[attr]

@@ -26,6 +26,7 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
     def test_delete_item(self):
         url = '/simpledoc/%s' % self._id
         r = self.delete(url)
+        self.assertEqual(r.status_code, 200)
         response = self.client.get('/simpledoc')
         self.assertEqual(response.status_code, 200)
         items = response.get_json()[config.ITEMS]
