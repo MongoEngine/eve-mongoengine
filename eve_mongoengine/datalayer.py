@@ -26,6 +26,7 @@ from mongoengine.connection import get_db, connect
 from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
 from eve.utils import config, debug_error_message, validate_filters
+from eve.exceptions import ConfigException
 
 # Python3 compatibility
 from ._compat import itervalues, iteritems
@@ -69,6 +70,14 @@ class MongoengineDataLayer(Mongo):
 
         :param ext: instance of :class:`EveMongoengine`.
         """
+        # get authentication info
+        username = ext.app.config['MONGO_USERNAME']
+        password = ext.app.config['MONGO_PASSWORD']
+        auth = (username, password)
+        if any(auth) and not all(auth):
+            raise ConfigException('Must set both USERNAME and PASSWORD '
+                                  'or neither')
+        # try to connect to db
         self.conn = connect(ext.app.config['MONGO_DBNAME'],
                             host=ext.app.config['MONGO_HOST'],
                             port=ext.app.config['MONGO_PORT'])
@@ -78,6 +87,9 @@ class MongoengineDataLayer(Mongo):
         # when instantiating after config was initialized
         self.driver = type('Driver', (), {})()
         self.driver.db = get_db()
+        # authenticate
+        if any(auth):
+            self.driver.db.authenticate(username, password)
 
     def _structure_in_model(self, model_cls):
         """
