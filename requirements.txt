@@ -1,2 +1,2 @@
 mongoengine>=0.8.7
-eve==0.3
+eve==0.4

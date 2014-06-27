@@ -49,3 +49,10 @@ class EveMongoengineValidator(Validator):
                 self._error(field_name, str(e))
             return False
         return True
+
+    def _validate_type_dynamic(self, field, value):
+        """
+        Dummy validation method just to convince cerberus not to validate that
+        value.
+        """
+        pass

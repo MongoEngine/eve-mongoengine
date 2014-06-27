@@ -226,7 +226,7 @@ class MongoengineDataLayer(Mongo):
             qry = qry.skip((req.page - 1) * req.max_results)
         return PymongoQuerySet(qry)
 
-    def find_one(self, resource, **lookup):
+    def find_one(self, resource, req, **lookup):
         """
         Look for one object.
         """

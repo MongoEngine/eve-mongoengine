@@ -27,7 +27,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/simpledoc/',
                                     data='{"a":123}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertIn(config.STATUS, json_data)
         self.assertEqual(json_data[config.STATUS], "ERR")
@@ -38,14 +38,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho", "c": "x", "d": "<10 chars", "e": "<10 chars"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200) # WTF
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'e': "min length is 10"})
         # break max_length
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho", "c": "x", "d": "string > 10 chars", "e": "some very long text"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200) # WTF
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'d': "max length is 10"})
 
@@ -54,7 +54,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"b": "ho", "c": "x"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200) # WTF
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'a': "required field"})
 
@@ -67,7 +67,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200) # WTF
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'b': "value 'ho' is not unique"})
 
@@ -76,14 +76,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "xoxo", "b": "xaxa", "f": 3}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'f': "min value is 5"})
 
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "xuxu", "b": "xixi", "f": 15}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'f': "max value is 10"})
 
@@ -92,7 +92,8 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/simpledoc/',
                                     data='[{"a": "jimmy", "b": 23}, {"a": "stefanie", "b": 47}]',
                                     content_type='application/json')
-        for result in response.get_json():
+
+        for result in response.get_json()[config.ITEMS]:
             self.assertEqual(result[config.STATUS], "OK")
 
 
@@ -100,7 +101,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/simpledoc/',
                                     data='[{"a": "jimmy", "b": 23}, {"a": 111, "b": 47}]',
                                     content_type='application/json')
-        data = response.get_json()
+        data = response.get_json()[config.ITEMS]
         self.assertEqual(data[0][config.STATUS], "OK")
         self.assertEqual(data[1][config.STATUS], "ERR")
 

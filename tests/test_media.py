@@ -4,6 +4,7 @@ import base64
 import unittest
 from bson import ObjectId
 
+import eve
 from eve.utils import config
 from eve import STATUS_OK, ID_FIELD, STATUS, STATUS_ERR, ISSUES, ETAG
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
@@ -52,6 +53,7 @@ class TestMedia(BaseTest, unittest.TestCase):
         # which decodes to the original clean
         self.assertEqual(base64.decodestring(returned.encode()), self.clean)
 
+    @unittest.skipIf(eve.__version__ == '0.4', "Fixed in eve 0.5")
     def test_put_media(self):
         resp = self._post()
         r = resp.get_json()
@@ -82,7 +84,7 @@ class TestMedia(BaseTest, unittest.TestCase):
         # previous media doesn't exist anymore (it's been deleted)
         self.assertFalse(self.app.media.exists(media_id))
 
-
+    @unittest.skipIf(eve.__version__ == '0.4', "Fixed in eve 0.5")
     def test_patch_media(self):
         resp = self._post()
         r = resp.get_json()

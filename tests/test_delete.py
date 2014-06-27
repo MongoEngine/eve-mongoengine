@@ -9,7 +9,7 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
             data='[{"a": "jimmy", "b": 23}, {"a": "steve", "b": 77}]',
             content_type='application/json')
         json_data = response.get_json()
-        ids = tuple(x['_id'] for x in json_data)
+        ids = tuple(x['_id'] for x in json_data[config.ITEMS])
         url = '/simpledoc?where={"$or": [{"_id": "%s"}, {"_id": "%s"}]}' % ids
         response = self.client.get(url).get_json()
         item = response[config.ITEMS][0]
