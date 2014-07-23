@@ -94,40 +94,66 @@ class SchemaMapper(object):
             if fname in ('_id', 'id'):
                 # default id field, do not insert it into schema
                 continue
-            schema[fname] = fdict = {}
-            best_matching_cls = cls._resolve_field_class(field)
-            if best_matching_cls in cls._mongoengine_to_cerberus:
-                cerberus_type = cls._mongoengine_to_cerberus[best_matching_cls]
-                fdict['type'] = cerberus_type
-                if field.required:
-                    fdict['required'] = True
-                if field.unique:
-                    fdict['unique'] = True
-                if field.choices:
-                    fdict['allowed'] = field.choices
-                if getattr(field, 'max_length', None) is not None:
-                    fdict['maxlength'] = field.max_length
-                if getattr(field, 'min_length', None) is not None:
-                    fdict['minlength'] = field.min_length
-                if getattr(field, 'max_value', None) is not None:
-                    fdict['max'] = field.max_value
-                if getattr(field, 'min_value', None) is not None:
-                    fdict['min'] = field.min_value
-                # special cases
-                if best_matching_cls is ReferenceField:
-                    # create data_relation schema
-                    resource = field.document_type.__name__
-                    if lowercase:
-                        resource = resource.lower()
-                    fdict['data_relation'] = {
-                        'resource': resource,
-                        'field': '_id',
-                        'embeddable': True
-                    }
-            elif best_matching_cls is DynamicField:
-                fdict['allow_unknown'] = True
-                fdict['type'] = 'dynamic'
+
+            schema[fname] = cls.process_field(field, lowercase)
+        if model_cls.__name__ == 'ComplexDoc':
+            from pprint import pprint
+            pprint(schema)
         return schema
+
+    @classmethod
+    def process_field(cls, field, lowercase):
+        """
+        Returns Eve field definition from Mongoengine field
+
+        :param field: Mongoengine field
+        :param lowercase: True if names of resource for model class has to be
+                        treated as lowercase string of classname.
+        """
+        fdict = {}
+        best_matching_cls = cls._resolve_field_class(field)
+
+        if best_matching_cls in cls._mongoengine_to_cerberus:
+            cerberus_type = cls._mongoengine_to_cerberus[best_matching_cls]
+            fdict['type'] = cerberus_type
+
+            if isinstance(field, EmbeddedDocumentField):
+                fdict['schema'] = cls.create_schema(field.document_type)
+            if isinstance(field, ListField):
+                fdict['schema'] = cls.process_field(field.field, lowercase)
+
+            if field.required:
+                fdict['required'] = True
+            if field.unique:
+                fdict['unique'] = True
+            if field.choices:
+                fdict['allowed'] = field.choices
+            if getattr(field, 'max_length', None) is not None:
+                fdict['maxlength'] = field.max_length
+            if getattr(field, 'min_length', None) is not None:
+                fdict['minlength'] = field.min_length
+            if getattr(field, 'max_value', None) is not None:
+                fdict['max'] = field.max_value
+            if getattr(field, 'min_value', None) is not None:
+                fdict['min'] = field.min_value
+
+            # special cases
+            if best_matching_cls is ReferenceField:
+                # create data_relation schema
+                resource = field.document_type.__name__
+                if lowercase:
+                    resource = resource.lower()
+                fdict['data_relation'] = {
+                    'resource': resource,
+                    'field': '_id',
+                    'embeddable': True
+                }
+
+        elif best_matching_cls is DynamicField:
+            fdict['allow_unknown'] = True
+            fdict['type'] = 'dynamic'
+
+        return fdict
 
     @classmethod
     def get_subresource_settings(cls, model_cls, resource_name,

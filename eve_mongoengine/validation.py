@@ -26,28 +26,32 @@ class EveMongoengineValidator(Validator):
     Helper validator which adapts mongoengine special-purpose fields
     to cerberus validator API.
     """
-    def validate(self, document, schema=None, update=False):
+    def validate(self, document, schema=None, update=False, context=None):
         """
         Main validation method which simply tries to validate against cerberus
         schema and if it does not fail, repeats the same against mongoengine
         validation machinery.
         """
+
         # call default eve's validator
-        if not Validator.validate(self, document, schema, update):
+        if not Validator.validate(self, document, schema, update, context):
             return False
+
         # validate using mongoengine field validators
-        model_cls = app.data.models[self.resource]
-        doc = model_cls(**document)
-        # rewind all file-like's
-        for attr, field in iteritems(model_cls._fields):
-            if isinstance(field, FileField) and attr in document:
-                document[attr].stream.seek(0)
-        try:
-            doc.validate()
-        except ValidationError as e:
-            for field_name, error in e.errors.items():
-                self._error(field_name, str(e))
-            return False
+        if self.resource:
+            model_cls = app.data.models[self.resource]
+            doc = model_cls(**document)
+            # rewind all file-like's
+            for attr, field in iteritems(model_cls._fields):
+                if isinstance(field, FileField) and attr in document:
+                    document[attr].stream.seek(0)
+            try:
+                doc.validate()
+            except ValidationError as e:
+                for field_name, error in e.errors.items():
+                    self._error(field_name, str(e))
+                return False
+
         return True
 
     def _validate_type_dynamic(self, field, value):
