@@ -96,9 +96,6 @@ class SchemaMapper(object):
                 continue
 
             schema[fname] = cls.process_field(field, lowercase)
-        if model_cls.__name__ == 'ComplexDoc':
-            from pprint import pprint
-            pprint(schema)
         return schema
 
     @classmethod
