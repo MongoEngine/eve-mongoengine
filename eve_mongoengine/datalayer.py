@@ -54,7 +54,11 @@ class PymongoQuerySet(object):
         def iterate(obj):
             qs = object.__getattribute__(obj, '_qs')
             for doc in qs:
-                yield dict(doc.to_mongo())
+                doc = dict(doc.to_mongo())
+                for attr, value in iteritems(dict(doc)):
+                    if isinstance(value, (list, dict)) and not value:
+                        del doc[attr]
+                yield doc
         return iterate(self)
 
     def __getattribute__(self, name):

@@ -153,6 +153,17 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             d.delete()
             d2.delete()
 
+    def test_etag_in_item_and_resource(self):
+        # etag of some entity has to be the same when fetching one item compared
+        # to etag of part of feed (resource)
+        d = ComplexDoc().save()
+        feed = self.client.get('/complexdoc/').get_json()
+        item = self.client.get('/complexdoc/%s' % d.id).get_json()
+        try:
+            self.assertEqual(feed[config.ITEMS][0][config.ETAG], item[config.ETAG])
+        finally:
+            d.delete()
+
     def test_embedded_resource_serialization(self):
         s = SimpleDoc(a="Answer to everything", b=42).save()
         d = ComplexDoc(r=s).save()
