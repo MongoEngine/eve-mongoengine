@@ -96,8 +96,9 @@ class TestFields(BaseTest, unittest.TestCase):
                                     content_type='application/json')
         json_data = response.get_json()
         self.assertEqual(json_data[config.STATUS], "ERR")
-        self.assertEqual(json_data[config.ISSUES]['i'], "ValidationError (ComplexDoc"\
-                         ":None) (b.baz could not be converted to int: ['i'])")
+        self.assertIn('i', json_data[config.ISSUES])
+        self.assertIn('b', json_data[config.ISSUES]['i'])
+        self.assertEqual(json_data[config.ISSUES]['i']['b'], 'must be of integer type')
 
     def test_embedded_in_list(self):
         # that's a tuff one
