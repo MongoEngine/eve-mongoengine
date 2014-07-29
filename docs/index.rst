@@ -67,3 +67,33 @@ Usage
     # let's roll
     app.run()
 
+Or, if you are setting up your data before Eve is initialized, as is the case with application factories: 
+
+::
+    import mongoengine
+    from eve import Eve
+    from eve_mongoengine import EveMongoengine
+
+    # create some dummy model class
+    class Person(mongoengine.Document):
+        name = mongoengine.StringField()
+        age = mongoengine.IntField()
+
+    # default eve settings
+    my_settings = {
+        'MONGO_HOST': 'localhost',
+        'MONGO_PORT': 27017,
+        'MONGO_DBNAME': 'eve_mongoengine_test'
+    }
+
+    ext = EveMongoengine()
+    ...
+    # init application
+    app = Eve(settings=my_settings)
+    # init extension
+    ext.init_app(app)
+    # register model to eve
+    ext.add_model(Person)
+
+    # let's roll
+    app.run()
