@@ -33,6 +33,13 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertNotIn('b', json_data)
         self.assertEqual(json_data['_id'], str(d.id))
         self.assertEqual(json_data['a'], 'Tom')
+        response = self.client.get('/simpledoc/%s?projection={"a":0}' % d.id)
+        json_data = response.get_json()
+        self.assertIn(config.LAST_UPDATED, json_data)
+        self.assertIn(config.DATE_CREATED, json_data)
+        self.assertIn('b', json_data)
+        self.assertNotIn('a', json_data)
+        self.assertEqual(json_data['_id'], str(d.id))
         d.delete()
 
     def test_find_one_nonexisting(self):
@@ -71,6 +78,10 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         data = response.get_json()['_items'][0]
         self.assertIn('b', data)
         self.assertIn('a', data)
+        response = self.client.get('/simpledoc?projection={"a": 0}')
+        data = response.get_json()['_items'][0]
+        self.assertIn('b', data)
+        self.assertNotIn('a', data)
         d.delete()
 
     def test_find_all_pagination(self):

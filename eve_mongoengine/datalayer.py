@@ -133,6 +133,8 @@ class MongoengineDataLayer(Mongo):
         """
         if projection is None:
             return qry
+
+        projection_value = set(projection.values())
         projection = set(projection.keys())
 
         # strip special underscore prefixed attributes -> in mongoengine
@@ -146,8 +148,11 @@ class MongoengineDataLayer(Mongo):
         projection.discard('id')
         rev_map = model_cls._reverse_db_field_map
         projection = [rev_map[field] for field in projection]
-        projection.append('id')
-        qry = qry.only(*projection)
+        if 0 in projection_value:
+            qry = qry.exclude(*projection)
+        else:
+            projection.append('id')
+            qry = qry.only(*projection)
         return qry
 
     def _get_model_cls(self, resource):
