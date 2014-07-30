@@ -68,19 +68,18 @@ Now the name of resource will be lowercase name of given class, in this example 
 Or, if you are setting up your data before Eve is initialized, as is the case with application factories: 
 
 ```
-    import mongoengine
-    from eve import Eve
-    from eve_mongoengine import EveMongoengine
+import mongoengine
+from eve import Eve
+from eve_mongoengine import EveMongoengine
 
-    ext = EveMongoengine()
-    ...
-    # init application
-    app = Eve(settings=my_settings)
+ext = EveMongoengine()
+...
+# init application
+app = Eve(settings=my_settings)
 
-    # init extension
-    ext.init_app(app)
-    ...
-
+# init extension
+ext.init_app(app)
+...
 ```
 
 Advanced model registration
@@ -157,6 +156,17 @@ Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 If you already have these fields in your model, Eve will probably scream at you, that it's not
 possible to have these fields in schema.
 
+**Auto-updating `LAST_UPDATED` field**
+
+If you update your document using mongoengine model (i.e. by calling `save()`, the `updated` field
+will be automatically updated to current time. This is because there is a mongoengine's
+`pre_save_post_validation` hook bound to `save()`. If somebody gets hurt by this hook, fill in
+issue or create pull request with fix.
+
+**Warning**: Be aware, that when using `QuerySet.update()` method, `LAST_UPDATED` field *WILL NOT*
+be updated!
+
+
 Limitations
 -----------
 
@@ -168,7 +178,4 @@ Limitations
   operation with files handles Eve's GridFS layer, not mongoengine's
   GridFSProxy!
 * Tested only on python 2.7 and 3.3.
-* If you update your document using mongoengine model (i.e. by calling `save()`,
-  the `updated` field wont be updated to current time. This is because there arent
-  any hooks bound to `save()` or `update()` methods and I consider this evil.
 
