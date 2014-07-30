@@ -67,3 +67,19 @@ Usage
     # let's roll
     app.run()
 
+Or, if you are setting up your data before Eve is initialized, as is the case with application factories: 
+
+::
+    import mongoengine
+    from eve import Eve
+    from eve_mongoengine import EveMongoengine
+
+    ext = EveMongoengine()
+    ...
+    # init application
+    app = Eve(settings=my_settings)
+
+    # init extension
+    ext.init_app(app)
+    ...
+

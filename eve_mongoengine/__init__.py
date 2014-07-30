@@ -75,9 +75,10 @@ class EveMongoengine(object):
     #: subclassed in the future to support new mongoenigne's fields.
     schema_mapper_class = SchemaMapper
 
-    def __init__(self, app):
+    def __init__(self, app=None):
         self.models = {}
-        self.init_app(app)
+        if app is not None:
+            self.init_app(app)
 
     def _parse_config(self):
         # parse app config
