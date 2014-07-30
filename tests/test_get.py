@@ -22,8 +22,6 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         d.delete()
 
     def test_find_one_projection(self):
-        # XXX: this it not eve's standard!
-        self.skipTest('Projection on one document not supported')
         d = SimpleDoc(a='Tom', b=223).save()
         response = self.client.get('/simpledoc/%s?projection={"a":1}' % d.id)
         # has to return one record

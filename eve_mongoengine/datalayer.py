@@ -16,6 +16,7 @@ import json
 from uuid import UUID
 
 # 3rd party
+from werkzeug.exceptions import HTTPException
 from flask import abort
 import pymongo
 from mongoengine import (DoesNotExist, EmbeddedDocumentField, DictField,
@@ -178,14 +179,21 @@ class MongoengineDataLayer(Mongo):
         # TODO sort syntax should probably be coherent with 'where': either
         # mongo-like # or python-like. Currently accepts only mongo-like sort
         # syntax.
+
         # TODO should validate on unknown sort fields (mongo driver doesn't
         # return an error)
         if req.sort:
-            client_sort = ast.literal_eval(req.sort)
+            try:
+                client_sort = ast.literal_eval(req.sort)
+            except Exception as e:
+                abort(400, description=debug_error_message(str(e)))
 
         if req.where:
             try:
                 spec = self._sanitize(json.loads(req.where))
+            except HTTPException as e:
+                # _sanitize() is raising an HTTP exception; let it fire.
+                raise
             except:
                 try:
                     spec = parse(req.where)
@@ -202,6 +210,7 @@ class MongoengineDataLayer(Mongo):
         bad_filter = validate_filters(spec, resource)
         if bad_filter:
             abort(400, bad_filter)
+
         if req.projection:
             try:
                 client_projection = json.loads(req.projection)
@@ -241,12 +250,18 @@ class MongoengineDataLayer(Mongo):
         """
         # transform every field value to correct type for querying
         lookup = self._mongotize(lookup, resource)
-        datasource, filter_, projection, _ = self._datasource_ex(resource,
-                                                                 lookup)
+
+        client_projection = self._client_projection(req)
+
+        datasource, filter_, projection, _ = self._datasource_ex(
+            resource,
+            lookup,
+            client_projection)
         qry = self._get_model_cls(resource).objects
 
         if len(filter_) > 0:
             qry = qry.filter(__raw__=filter_)
+
         qry = self._projection(resource, projection, qry)
         try:
             doc = dict(qry.get().to_mongo())
