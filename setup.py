@@ -17,5 +17,6 @@ setup(
     install_requires=[
         'Eve==0.4',
         'Mongoengine>=0.8.7',
+        'Blinker'
     ]
 )
