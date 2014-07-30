@@ -27,6 +27,14 @@ from ._compat import itervalues, iteritems
 __version__ = "0.0.6-dev"
 
 
+def get_utc_time():
+    """
+    Returns current datetime in system-wide UTC format wichout microsecond
+    part.
+    """
+    return datetime.utcnow().replace(microsecond=0)
+
+
 class EveMongoengine(object):
     """
     An extension to Eve which allows Mongoengine models to be registered
@@ -179,7 +187,6 @@ class EveMongoengine(object):
                           :class:`mongoengine.Document`) to be fixed up.
         """
         date_field_cls = mongoengine.DateTimeField
-        date_func = lambda: datetime.utcnow().replace(microsecond=0)
 
         # field names have to be non-prefixed
         last_updated_field_name = self.last_updated.lstrip('_')
@@ -187,9 +194,9 @@ class EveMongoengine(object):
         new_fields = {
             # TODO: updating last_updated field every time when saved
             last_updated_field_name: date_field_cls(db_field=self.last_updated,
-                                                    default=date_func),
+                                                    default=get_utc_time),
             date_created_field_name: date_field_cls(db_field=self.date_created,
-                                                    default=date_func)
+                                                    default=get_utc_time)
         }
 
         for attr_name, attr_value in iteritems(new_fields):
@@ -226,3 +233,14 @@ class EveMongoengine(object):
             iterfields = itervalues(model_cls._fields)
             created = [(v.creation_counter, v.name) for v in iterfields]
             model_cls._fields_ordered = tuple(i[1] for i in sorted(created))
+
+
+def fix_last_updated(sender, document, **kwargs):
+    """
+    Hook which updates LAST_UPDATED field before every Document.save() call.
+    """
+    from eve.utils import config
+    field_name = config.LAST_UPDATED.lstrip('_')
+    document[field_name] = get_utc_time()
+
+mongoengine.signals.pre_save_post_validation.connect(fix_last_updated)

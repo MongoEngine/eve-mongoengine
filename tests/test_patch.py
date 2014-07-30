@@ -1,5 +1,6 @@
 
 import json
+import time
 import unittest
 from eve.utils import config
 from tests import BaseTest, SimpleDoc, ComplexDoc
@@ -111,3 +112,17 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         # cleanup
         s.delete()
         d.delete()
+
+    @post_simple_item
+    def test_update_date_consistency(self):
+        # tests if _updated is really updated when PATCHing resource
+        updated = self.client.get(self.url).get_json()[config.LAST_UPDATED]
+        time.sleep(1)
+        s = SimpleDoc.objects.get()
+        updated_before_patch = s.updated
+        s.a = "bob"
+        s.save()
+        updated_after_patch = s.updated
+        self.assertNotEqual(updated_before_patch, updated_after_patch)
+        delta = updated_after_patch - updated_before_patch
+        self.assertGreater(delta.seconds, 0)

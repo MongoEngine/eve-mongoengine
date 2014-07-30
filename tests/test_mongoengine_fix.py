@@ -53,7 +53,7 @@ class TestMongoengineFix(unittest.TestCase):
         d.delete()
 
     def test_default_values(self):
-        app = self.create_app(SimpleDoc) 
+        app = self.create_app(SimpleDoc)
         self._test_default_values(app, SimpleDoc)
 
     def test_wrong_doc(self):
@@ -71,8 +71,9 @@ class TestMongoengineFix(unittest.TestCase):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model(SimpleDoc)
-        app = app.test_client()
-        self._test_default_values(app, SimpleDoc, updated_name='last_change')
+        client = app.test_client()
+        with app.app_context(): # to get current app's config
+            self._test_default_values(client, SimpleDoc, updated_name='last_change')
 
     def test_nondefault_date_created_field(self):
         # redefine to get entirely new class
