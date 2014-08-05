@@ -5,7 +5,11 @@ import json
 
 from eve_mongoengine import EveMongoengine
 from eve.utils import config
-from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc, WrongDoc, SETTINGS
+from tests import (
+    BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc,
+    WrongDoc, HawkeyDoc, SETTINGS
+)
+
 
 class TestHttpPost(BaseTest, unittest.TestCase):
     def test_post_simple(self):
@@ -13,7 +17,6 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/simpledoc/',
                                     data='{"a": "jimmy", "b": 23}',
                                     content_type='application/json')
-        #XXX: eve's fault: This should be 201 Created instead of 200 OK
         self.assertEqual(response.status_code, 201)
         post_data = response.get_json()
         self.assertEqual(post_data[config.STATUS], "OK")
@@ -114,9 +117,25 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         resp_json = response.get_json()
         self.assertEqual(resp_json[config.STATUS], "OK")
 
-        # overeni, jestli tam opravdu je.
+        # verify saved data
         response = self.client.get('/simpledoc/%s/complexdoc' % s.id)
         self.assertEqual(response.status_code, 200)
         resp_json = response.get_json()
         self.assertEqual(len(resp_json[config.ITEMS]), 1)
         self.assertEqual(resp_json[config.ITEMS][0]['l'], ['x', 'y', 'z'])
+
+    def test_post_with_pre_save_hook(self):
+        # resulting etag has to match (etag must be computed from
+        # modified data, not from original!)
+        data = {'a': 'hey'}
+        response = self.client.post('/hawkeydoc/', data='{"a": "hey"}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+        resp_json = response.get_json()
+        self.assertEqual(resp_json[config.STATUS], "OK")
+        etag = resp_json[config.ETAG]
+
+        # verify etag
+        resp = self.client.get('/hawkeydoc/%s' % resp_json['_id'])
+        self.assertEqual(etag, resp.get_json()[config.ETAG])
+        

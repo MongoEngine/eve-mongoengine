@@ -114,6 +114,7 @@ class TestMedia(BaseTest, unittest.TestCase):
         # previous media doesn't exist anymore (it's been deleted)
         self.assertFalse(self.app.media.exists(media_id))
 
+    @unittest.skipIf(eve.__version__ == '0.4', "Fixed in eve 0.5")
     def test_media_delete(self):
         resp = self._post()
         r = resp.get_json()

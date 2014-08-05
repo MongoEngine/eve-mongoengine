@@ -2,6 +2,7 @@
 import json
 from flask import Response as BaseResponse
 from mongoengine import *
+import mongoengine.signals
 from eve import Eve
 
 from eve_mongoengine import EveMongoengine
@@ -97,6 +98,15 @@ class NonStructuredDoc(Document):
     # any structured field (listField, dictField etc.)
     new_york = StringField(db_field='NewYork')
 
+class HawkeyDoc(Document):
+    # document with save() hooked
+    a = StringField()
+    b = StringField()
+
+def update_b(sender, document):
+    document.b = document.a * 2 # 'a' -> 'aa'
+mongoengine.signals.pre_save.connect(update_b, sender=HawkeyDoc)
+
 
 class BaseTest(object):
     @classmethod
@@ -106,7 +116,7 @@ class BaseTest(object):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc,
-                       NonStructuredDoc, Inherited])
+                       NonStructuredDoc, Inherited, HawkeyDoc])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app
