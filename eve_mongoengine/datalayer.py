@@ -85,9 +85,14 @@ class MongoengineDataLayer(Mongo):
 
     Most of functionality is copied from :class:`eve.io.mongo.Mongo`.
     """
+    #: default JSON encoder
     json_encoder_class = MongoengineJsonEncoder
 
+    #: list of mongoengine field types, which consist of another fields
     _structured_fields = (EmbeddedDocumentField, DictField, MapField)
+
+    #: name of default queryset, where datalayer asks for data
+    default_queryset = 'objects'
 
     def __init__(self, ext):
         """
@@ -162,6 +167,10 @@ class MongoengineDataLayer(Mongo):
         except KeyError:
             abort(404)
 
+    def _objects(self, resource):
+        _cls = self._get_model_cls(resource)
+        return getattr(_cls, self.default_queryset)
+
     def find(self, resource, req, sub_resource_lookup):
         """
         Seach for results and return list of them.
@@ -170,7 +179,7 @@ class MongoengineDataLayer(Mongo):
         :param req: instance of :class:`eve.utils.ParsedRequest`.
         :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
-        qry = self._get_model_cls(resource).objects
+        qry = self._objects(resource)
 
         client_projection = {}
         client_sort = {}
@@ -257,7 +266,7 @@ class MongoengineDataLayer(Mongo):
             resource,
             lookup,
             client_projection)
-        qry = self._get_model_cls(resource).objects
+        qry = self._objects(resource)
 
         if len(filter_) > 0:
             qry = qry.filter(__raw__=filter_)
@@ -331,7 +340,7 @@ class MongoengineDataLayer(Mongo):
         try:
             # FIXME: filters?
             kwargs = self._transform_updates_to_mongoengine_kwargs(updates)
-            qry = self._get_model_cls(resource).objects(id=id_)
+            qry = self._objects(resource)(id=id_)
             qry.update_one(write_concern=self._wc(resource), **kwargs)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -357,11 +366,10 @@ class MongoengineDataLayer(Mongo):
         datasource, filter_, _, _ = self._datasource_ex(resource, lookup)
 
         try:
-            model_cls = self._get_model_cls(resource)
             if not filter_:
-                qry = model_cls.objects
+                qry = self._objects(resource)
             else:
-                qry = model_cls.objects(__raw__=filter_)
+                qry = self._objects(resource)(__raw__=filter_)
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
