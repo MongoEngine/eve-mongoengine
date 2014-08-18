@@ -169,7 +169,11 @@ class MongoengineDataLayer(Mongo):
 
     def _objects(self, resource):
         _cls = self._get_model_cls(resource)
-        return getattr(_cls, self.default_queryset)
+        try:
+            return getattr(_cls, self.default_queryset)
+        except AttributeError:
+            # falls back to default `objects` QuerySet
+            return _cls.objects
 
     def find(self, resource, req, sub_resource_lookup):
         """
