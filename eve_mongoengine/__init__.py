@@ -241,6 +241,7 @@ def fix_last_updated(sender, document, **kwargs):
     """
     from eve.utils import config
     field_name = config.LAST_UPDATED.lstrip('_')
-    document[field_name] = get_utc_time()
+    if field_name in document:
+        document[field_name] = get_utc_time()
 
 mongoengine.signals.pre_save_post_validation.connect(fix_last_updated)
