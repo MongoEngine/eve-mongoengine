@@ -103,6 +103,11 @@ When you register more than one model at time, you need to encapsulate all model
 ext.add_model([Person, Car, House, Dog])
 ```
 
+Also you can switch off generation of sub-resources by this way:
+```python
+ext.add_model(Person, with_subresources=False)
+```
+
 **HTTP Methods**
 
 By default, all HTTP methods are allowed for registered classes:
