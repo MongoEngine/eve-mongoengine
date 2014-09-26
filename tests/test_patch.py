@@ -3,7 +3,7 @@ import json
 import time
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc, ComplexDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc
 
 
 def post_simple_item(f):
@@ -114,6 +114,23 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         # cleanup
         s.delete()
         d.delete()
+
+    def test_patch_field_with_different_dbfield(self):
+        # tests patching field whith has mongoengine's db_field specified
+        # and different from python field name
+        s = FieldsDoc(n="Hello").save()
+        response = self.client.get('/fieldsdoc/%s' % s.id)
+        etag = response.get_json()[config.ETAG]
+        headers = [('If-Match', etag)]
+
+        # patch document
+        patch_data = {'longFieldName': 'Howdy'}
+        patch_url = '/fieldsdoc/%s' % s.id
+        response = self.client.patch(patch_url, data=json.dumps(patch_data),
+                                     content_type='application/json', headers=headers)
+        self.assertEqual(response.status_code, 200)
+        resp_json = response.get_json()
+        self.assertEqual(resp_json[config.STATUS], "OK")
 
     @post_simple_item
     def test_update_date_consistency(self):

@@ -337,19 +337,22 @@ class MongoengineDataLayer(Mongo):
                 'pymongo.errors.OperationFailure: %s' % e
             ))
 
-    def _transform_updates_to_mongoengine_kwargs(self, updates):
+    def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
         """
         Transforms update dict to special mongoengine syntax with set__,
         unset__ etc.
         """
-        nopfx = lambda x: x.lstrip('_')
+        field_cls = self._get_model_cls(resource)
+        to_python_field = field_cls._reverse_db_field_map
+        nopfx = lambda x: to_python_field[x.lstrip('_')]
         return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""
         try:
             # FIXME: filters?
-            kwargs = self._transform_updates_to_mongoengine_kwargs(updates)
+            kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
+                                                                   updates)
             qry = self._objects(resource)(id=id_)
             qry.update_one(write_concern=self._wc(resource), **kwargs)
         except pymongo.errors.OperationFailure as e:
@@ -357,6 +360,8 @@ class MongoengineDataLayer(Mongo):
             abort(500, description=debug_error_message(
                 'pymongo.errors.OperationFailure: %s' % e
             ))
+        except Exception as exc:
+            print exc
 
     def replace(self, resource, id_, document):
         """Called when performing PUT request."""
