@@ -278,10 +278,7 @@ class MongoengineDataLayer(Mongo):
         qry = self._projection(resource, projection, qry)
         try:
             doc = dict(qry.get().to_mongo())
-            for attr, value in iteritems(dict(doc)):
-                if isinstance(value, (list, dict)) and not value:
-                    del doc[attr]
-            return doc
+            return self._clean_doc(doc)
         except DoesNotExist:
             return None
 
@@ -304,6 +301,13 @@ class MongoengineDataLayer(Mongo):
                     instance._data[attr] = proxy
         return instance
 
+    def _clean_doc(self, doc):
+        """Cleans empty datastructured to get proper etag"""
+        for attr, value in iteritems(dict(doc)):
+            if isinstance(value, (list, dict)) and not value:
+                del doc[attr]
+        return doc
+
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""
         datasource, filter_, _, _ = self._datasource_ex(resource)
@@ -316,12 +320,14 @@ class MongoengineDataLayer(Mongo):
                     ids.append(model.id)
                     doc.update(dict(model.to_mongo()))
                     doc[config.ID_FIELD] = model.id
+                    self._clean_doc(doc)
                 return ids
             else:
                 model = self._doc_to_model(resource, doc_or_docs)
                 model.save(write_concern=self._wc(resource))
                 doc_or_docs.update(dict(model.to_mongo()))
                 doc_or_docs[config.ID_FIELD] = model.id
+                self._clean_doc(doc_or_docs)
                 return model.id
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an

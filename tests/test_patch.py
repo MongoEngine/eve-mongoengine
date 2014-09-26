@@ -12,11 +12,11 @@ def post_simple_item(f):
                                     data='{"a": "jimmy", "b": 23}',
                                     content_type='application/json')
         json_data = response.get_json()
-        self.url = '/simpledoc/%s' % json_data[config.ID_FIELD]
-        response = self.client.get(self.url).get_json()
-        self.etag = response[config.ETAG]
-        self._id = response[config.ID_FIELD]
-        self.updated = response[config.LAST_UPDATED]
+        self._id = json_data[config.ID_FIELD]
+        self.url = '/simpledoc/%s' % self._id # json_data[config.ID_FIELD]
+        #response = self.client.get(self.url).get_json()
+        self.etag = json_data[config.ETAG]
+        self.updated = json_data[config.LAST_UPDATED]
         f(self)
         SimpleDoc.objects().delete()
     return wrapper
@@ -28,11 +28,13 @@ def post_complex_item(f):
                                     data=payload,
                                     content_type='application/json')
         json_data = response.get_json()
+        self._id = json_data[config.ID_FIELD]
         self.url = '/complexdoc/%s' % json_data[config.ID_FIELD]
-        response = self.client.get(self.url).get_json()
-        self.etag = response[config.ETAG]
-        self._id = response[config.ID_FIELD]
-        self.updated = response[config.LAST_UPDATED]
+        self.etag = json_data[config.ETAG]
+        # check if etags are okay
+        self.assertEqual(self.client.get(self.url).get_json()[config.ETAG], self.etag)
+        #self._id = response[config.ID_FIELD]
+        self.updated = json_data[config.LAST_UPDATED]
         f(self)
         ComplexDoc.objects().delete()
     return wrapper
