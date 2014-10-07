@@ -368,7 +368,7 @@ class MongoengineDataLayer(Mongo):
         Updates one document non-atomically using Document.save().
         """
         cls = self._get_model_cls(resource)
-        model = cls.objects(id=id_).get()
+        model = self._objects(resource)(id=id_).get()
         for db_field, value in iteritems(updates):
             field_name = cls._reverse_db_field_map[db_field]
             field = cls._fields[field_name]
