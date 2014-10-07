@@ -136,8 +136,16 @@ PATCH item    :func:`QuerySet.update_one()` (atomic)
 DELETE item   :func:`QuerySet.delete()`
 ============  ==========================
 
-So if you have some hook bound to save() method, it should be executed every
-POST and PUT call you make using Eve.
+So if you have some hook bound to ``save()`` method, it should be executed every
+POST and PUT call you make using Eve. But you have an option to use ``save()``
+method in ``PATCH`` requests in exchange for one database fetch, so it is
+relatively slower. If you want to use this feature, set this options in data layer::
+
+    app = Eve()
+    ext = EveMongoengine(app)
+    #: this switches from using QuerySet.update_one() to Document.save()
+    app.data.mongoengine_options['use_atomic_update_for_patch'] = False
+    ext.add_model(Person)
 
 
 Limitations

@@ -22,7 +22,7 @@ from werkzeug.exceptions import HTTPException
 from flask import abort
 import pymongo
 from mongoengine import (DoesNotExist, EmbeddedDocumentField, DictField,
-                         MapField, ListField, FileField)
+                         MapField, ListField, FileField, ReferenceField)
 from mongoengine.connection import get_db, connect
 
 # eve
@@ -95,6 +95,15 @@ class MongoengineDataLayer(Mongo):
 
     #: name of default queryset, where datalayer asks for data
     default_queryset = 'objects'
+
+    #: Options for usage of mongoengine layer.
+    #: use_atomic_update_for_patch - when set to True, Mongoengine layer will
+    #: use update_one() method (which is atomic) for updating. But then you
+    #: will loose your pre/post-save hooks. When you set this to False, for
+    #: updating will be used save() method.
+    mongoengine_options = {
+        'use_atomic_update_for_patch': True
+    }
 
     def __init__(self, ext):
         """
@@ -345,14 +354,42 @@ class MongoengineDataLayer(Mongo):
         nopfx = lambda x: field_cls._reverse_db_field_map[x]
         return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
+    def _update_using_update_one(self, resource, id_, updates):
+        """
+        Updates one document atomically using QuerySet.update_one().
+        """
+        kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
+                                                               updates)
+        qry = self._objects(resource)(id=id_)
+        qry.update_one(write_concern=self._wc(resource), **kwargs)
+
+    def _update_using_save(self, resource, id_, updates):
+        """
+        Updates one document non-atomically using Document.save().
+        """
+        cls = self._get_model_cls(resource)
+        model = cls.objects(id=id_).get()
+        for db_field, value in iteritems(updates):
+            field_name = cls._reverse_db_field_map[db_field]
+            field = cls._fields[field_name]
+            if isinstance(field, ReferenceField):
+                value = field.to_python(value)
+            if isinstance(field, EmbeddedDocumentField):
+                # FIXME: resolve embedded document in embedded document
+                embedded = getattr(model, field_name)
+                for attr, val in iteritems(value):
+                    setattr(embedded, attr, val)
+                continue
+            model[field_name] = value
+        model.save(write_concern=self._wc(resource))
+
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""
         try:
-            # FIXME: filters?
-            kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
-                                                                   updates)
-            qry = self._objects(resource)(id=id_)
-            qry.update_one(write_concern=self._wc(resource), **kwargs)
+            if self.mongoengine_options.get('use_atomic_update_for_patch', 1):
+                self._update_using_update_one(resource, id_, updates)
+            else:
+                self._update_using_save(resource, id_, updates)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
             abort(500, description=debug_error_message(

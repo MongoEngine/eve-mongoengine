@@ -1,4 +1,5 @@
 
+from bson import ObjectId
 import json
 import time
 import unittest
@@ -17,8 +18,10 @@ def post_simple_item(f):
         #response = self.client.get(self.url).get_json()
         self.etag = json_data[config.ETAG]
         self.updated = json_data[config.LAST_UPDATED]
-        f(self)
-        SimpleDoc.objects().delete()
+        try:
+            f(self)
+        finally:
+            SimpleDoc.objects().delete()
     return wrapper
 
 def post_complex_item(f):
@@ -35,8 +38,10 @@ def post_complex_item(f):
         self.assertEqual(self.client.get(self.url).get_json()[config.ETAG], self.etag)
         #self._id = response[config.ID_FIELD]
         self.updated = json_data[config.LAST_UPDATED]
-        f(self)
-        ComplexDoc.objects().delete()
+        try:
+            f(self)
+        finally:
+            ComplexDoc.objects().delete()
     return wrapper
 
 
@@ -62,7 +67,14 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
 
     @post_simple_item
     def test_patch_overwrite_subset(self):
+        # test what was really updated
+        raw = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
         self.do_patch(data='{"a": "greg"}')
+        expected = dict(raw)
+        expected['a'] = 'greg'
+        real = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
+        self.assertDictEqual(real, expected)
+        # test if GET response returns corrent response
         response = self.client.get(self.url).get_json()
         self.assertIn('a', response)
         self.assertEqual(response['a'], "greg")
@@ -71,9 +83,16 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
 
     @post_complex_item
     def test_patch_dict_field(self):
-        self.assertEqual(ComplexDoc.objects[0].d['x'], None)
+        test = ComplexDoc.objects[0]
+        self.assertListEqual(test.l, ['m', 'n'])
+        self.assertEqual(test.d['x'], None)
+        self.assertEqual(test.i.a, "hello")
+        # do PATCH
         response = self.do_patch(data='{"d": {"x": "789"}}')
-        self.assertEqual(ComplexDoc.objects[0].d['x'], "789")
+        real = ComplexDoc.objects[0]
+        self.assertEqual(real.d['x'], "789")
+        self.assertListEqual(real.l, ['m', 'n'])
+        self.assertEqual(real.i.a, "hello")
 
     @post_complex_item
     def test_patch_embedded_document(self):
@@ -86,6 +105,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(ComplexDoc.objects[0].l, ["m", "n"])
         response = self.do_patch(data='{"l": []}')
         self.assertEqual(ComplexDoc.objects[0].l, [])
+        self.assertEqual(ComplexDoc.objects[0].i.a, "hello")
 
     def test_patch_subresource(self):
         # create new resource and subresource
@@ -145,3 +165,15 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertNotEqual(updated_before_patch, updated_after_patch)
         delta = updated_after_patch - updated_before_patch
         self.assertGreater(delta.seconds, 0)
+
+
+class TestHttpPatchUsingSaveMethod(TestHttpPatch):
+    @classmethod
+    def setUpClass(cls):
+        BaseTest.setUpClass()
+        cls.app.data.mongoengine_options['use_atomic_update_for_patch'] = False
+
+    @classmethod
+    def tearDownClass(cls):
+        BaseTest.tearDownClass()
+        cls.app.data.mongoengine_options['use_atomic_update_for_patch'] = True

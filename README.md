@@ -167,6 +167,22 @@ issue or create pull request with fix.
 be updated!
 
 
+Options for mongoengine
+-----------------------
+Every insert/update (POST, PUT) goes through mongoengine's ``Document.save()`` method,
+but PATCH method uses as default method atomic ``mongoengine.QuerySet.update_one()`.
+So if you have some hook bound to ``save()`` method, you loose it in this way.
+But you have an option to use ``save()`` method in ``PATCH`` requests in exchange
+for one database fetch, so it is relatively slower. If you want to use this feature,
+set this options in data layer::
+
+    app = Eve()
+    ext = EveMongoengine(app)
+    #: this switches from using QuerySet.update_one() to Document.save()
+    app.data.mongoengine_options['use_atomic_update_for_patch'] = False
+    ext.add_model(Person)
+
+
 Limitations
 -----------
 
