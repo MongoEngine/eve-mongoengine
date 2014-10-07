@@ -227,13 +227,8 @@ class MongoengineDataLayer(Mongo):
         if bad_filter:
             abort(400, bad_filter)
 
-        if req.projection:
-            try:
-                client_projection = json.loads(req.projection)
-            except Exception as e:
-                abort(400, description=debug_error_message(
-                    'Unable to parse `projection` clause: '+str(e)
-                ))
+        client_projection = self._client_projection(req)
+
         datasource, spec, projection, sort = self._datasource_ex(
             resource,
             spec,
@@ -268,7 +263,6 @@ class MongoengineDataLayer(Mongo):
         lookup = self._mongotize(lookup, resource)
 
         client_projection = self._client_projection(req)
-
         datasource, filter_, projection, _ = self._datasource_ex(
             resource,
             lookup,
