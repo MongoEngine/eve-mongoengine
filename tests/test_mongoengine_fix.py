@@ -54,6 +54,10 @@ class TestMongoengineFix(unittest.TestCase):
 
     def test_default_values(self):
         app = self.create_app(SimpleDoc)
+        self.assertEqual(SimpleDoc._db_field_map['updated'], '_updated')
+        self.assertEqual(SimpleDoc._reverse_db_field_map['_updated'], 'updated')
+        self.assertEqual(SimpleDoc._db_field_map['created'], '_created')
+        self.assertEqual(SimpleDoc._reverse_db_field_map['_created'], 'created')
         self._test_default_values(app, SimpleDoc)
 
     def test_wrong_doc(self):

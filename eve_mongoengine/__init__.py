@@ -225,8 +225,8 @@ class EveMongoengine(object):
             # now simulate DocumentMetaclass: add class attributes
             setattr(model_cls, attr_name, attr_value)
             model_cls._fields[attr_name] = attr_value
-            model_cls._db_field_map[attr_name] = attr_name
-            model_cls._reverse_db_field_map[attr_name] = attr_name
+            model_cls._db_field_map[attr_name] = attr_value.db_field
+            model_cls._reverse_db_field_map[attr_value.db_field] = attr_name
 
             # this is just copied from mongoengine and frankly, i just dont
             # have a clue, what it does...

@@ -11,9 +11,11 @@
 """
 
 # builtin
+import sys
 import ast
 import json
 from uuid import UUID
+import traceback
 
 # 3rd party
 from werkzeug.exceptions import HTTPException
@@ -121,6 +123,11 @@ class MongoengineDataLayer(Mongo):
         if any(auth):
             self.driver.db.authenticate(username, password)
 
+    def _handle_exception(self, exc):
+        if self.app.debug:
+            traceback.print_exc(file=sys.stderr)
+        raise exc
+
     def _structure_in_model(self, model_cls):
         """
         Returns True if model contains some kind of structured field.
@@ -145,18 +152,14 @@ class MongoengineDataLayer(Mongo):
 
         # strip special underscore prefixed attributes -> in mongoengine
         # they arent prefixed
-        for attr in ('_id', '_created', '_updated'):
-            if attr in projection:
-                projection.remove(attr)
-                projection.add(attr.lstrip('_'))
-        # id has to be always there
         model_cls = self._get_model_cls(resource)
-        projection.discard('id')
+        projection.discard('_id')
         rev_map = model_cls._reverse_db_field_map
         projection = [rev_map[field] for field in projection]
         if 0 in projection_value:
             qry = qry.exclude(*projection)
         else:
+            # id has to be always there
             projection.append('id')
             qry = qry.only(*projection)
         return qry
@@ -336,6 +339,8 @@ class MongoengineDataLayer(Mongo):
             abort(500, description=debug_error_message(
                 'pymongo.errors.OperationFailure: %s' % e
             ))
+        except Exception as exc:
+            self._handle_exception(exc)
 
     def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
         """
@@ -343,8 +348,7 @@ class MongoengineDataLayer(Mongo):
         unset__ etc.
         """
         field_cls = self._get_model_cls(resource)
-        to_python_field = field_cls._reverse_db_field_map
-        nopfx = lambda x: to_python_field[x.lstrip('_')]
+        nopfx = lambda x: field_cls._reverse_db_field_map[x]
         return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
     def update(self, resource, id_, updates):
@@ -361,7 +365,7 @@ class MongoengineDataLayer(Mongo):
                 'pymongo.errors.OperationFailure: %s' % e
             ))
         except Exception as exc:
-            print exc
+            self._handle_exception(exc)
 
     def replace(self, resource, id_, document):
         """Called when performing PUT request."""
@@ -374,6 +378,8 @@ class MongoengineDataLayer(Mongo):
             abort(500, description=debug_error_message(
                 'pymongo.errors.OperationFailure: %s' % e
             ))
+        except Exception as exc:
+            self._handle_exception(exc)
 
     def remove(self, resource, lookup):
         """Called when performing DELETE request."""
@@ -391,3 +397,5 @@ class MongoengineDataLayer(Mongo):
             abort(500, description=debug_error_message(
                 'pymongo.errors.OperationFailure: %s' % e
             ))
+        except Exception as exc:
+            self._handle_exception(exc)
