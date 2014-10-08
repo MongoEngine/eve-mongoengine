@@ -44,6 +44,9 @@ class Inner(EmbeddedDocument):
     a = StringField()
     b = IntField()
 
+class ListInner(EmbeddedDocument):
+    ll = ListField(StringField())
+
 class ComplexDoc(Document):
     # more complex field with embedded documents and lists
     i = EmbeddedDocumentField(Inner)
@@ -52,6 +55,7 @@ class ComplexDoc(Document):
     n = DynamicField()
     r = ReferenceField(SimpleDoc)
     o = ListField(EmbeddedDocumentField(Inner))
+    p = ListField(EmbeddedDocumentField(ListInner))
 
 class LimitedDoc(Document):
     # doc for testing field limits and properties

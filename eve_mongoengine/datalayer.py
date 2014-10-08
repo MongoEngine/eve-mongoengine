@@ -28,7 +28,9 @@ from mongoengine.connection import get_db, connect
 # eve
 from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
-from eve.utils import config, debug_error_message, validate_filters
+from eve.utils import (
+    config, debug_error_message, validate_filters, document_etag
+)
 from eve.exceptions import ConfigException
 
 # Python3 compatibility
@@ -131,8 +133,35 @@ class MongoengineDataLayer(Mongo):
         # authenticate
         if any(auth):
             self.driver.db.authenticate(username, password)
+        # FIX wrongly generated etags because of empty lists
+        self._install_etag_fixer()
+
+    def _install_etag_fixer(self):
+        """
+        Fixes ETag value returned by PATCH responses.
+        """
+        self._etag_doc = None
+
+        def fix_patch_etag(resource, request, payload):
+            if self._etag_doc is None:
+                return
+            # make doc from which the etag will be computed
+            for key, value in iteritems(dict(self._etag_doc)):
+                if value == []:
+                    self._etag_doc.pop(key)
+            etag_doc = self._clean_doc(self._etag_doc)
+            # load the response back agagin from json
+            d = json.loads(payload.get_data(as_text=True))
+            # compute new etag
+            d[config.ETAG] = document_etag(etag_doc)
+            payload.set_data(json.dumps(d))
+
+        self.app.on_post_PATCH += fix_patch_etag
 
     def _handle_exception(self, exc):
+        """
+        If application is in debug mode, prints every traceback to stderr.
+        """
         if self.app.debug:
             traceback.print_exc(file=sys.stderr)
         raise exc
@@ -354,6 +383,26 @@ class MongoengineDataLayer(Mongo):
         nopfx = lambda x: field_cls._reverse_db_field_map[x]
         return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
+    def _has_empty_list_recurse(self, value):
+        if value == []:
+            return True
+        if isinstance(value, dict):
+            return self._has_empty_list(value)
+        elif isinstance(value, list):
+            for val in value:
+                if self._has_empty_list_recurse(val):
+                    return True
+        return False
+
+    def _has_empty_list(self, updates):
+        """
+        Traverses updates and returns True if there is update to empty list.
+        """
+        for key, value in iteritems(updates):
+            if self._has_empty_list_recurse(value):
+                return True
+        return False
+
     def _update_using_update_one(self, resource, id_, updates):
         """
         Updates one document atomically using QuerySet.update_one().
@@ -362,6 +411,12 @@ class MongoengineDataLayer(Mongo):
                                                                updates)
         qry = self._objects(resource)(id=id_)
         qry.update_one(write_concern=self._wc(resource), **kwargs)
+        if self._has_empty_list(updates):
+            # Fix Etag when updating to empty list
+            model = self._objects(resource)(id=id_).get()
+            self._etag_doc = dict(model.to_mongo())
+        else:
+            self._etag_doc = None
 
     def _update_document(self, doc, updates):
         """
@@ -381,6 +436,8 @@ class MongoengineDataLayer(Mongo):
         model = self._objects(resource)(id=id_).get()
         self._update_document(model, updates)
         model.save(write_concern=self._wc(resource))
+        # Fix Etag when updating to empty list
+        self._etag_doc = dict(model.to_mongo())
 
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""

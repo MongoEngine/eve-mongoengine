@@ -27,7 +27,7 @@ def post_simple_item(f):
 def post_complex_item(f):
     def wrapper(self):
         payload = '{"i": {"a": "hello"}, "d": {"x": null}, "l": ["m", "n"], '+\
-                  '"o": [{"a":"hi"},{"b":9}]}'
+                  '"o": [{"a":"hi"},{"b":9}], "p": [{"ll": ["q", "w"]}]}'
         response = self.client.post('/complexdoc/',
                                     data=payload,
                                     content_type='application/json')
@@ -59,7 +59,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
 
     def assert_correct_etag(self, patch_response):
         etag = patch_response.get_json()[config.ETAG]
-        get_etag = self.client.get(self.url).get_json()[config.ETAG]
+        get_resp = self.client.get(self.url).get_json()
+        get_etag = get_resp[config.ETAG]
         self.assertEqual(etag, get_etag)
 
     @post_simple_item
@@ -122,10 +123,56 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     @post_complex_item
     def test_patch_list(self):
         self.assertEqual(ComplexDoc.objects[0].l, ["m", "n"])
+        # full one
+        response = self.do_patch(data='{"l": ["n"]}')
+        self.assert_correct_etag(response)
+        self.etag = response.get_json()[config.ETAG]
+        doc = ComplexDoc.objects[0]
+        self.assertEqual(doc.l, ["n"])
+        self.assertEqual(doc.i.a, "hello")
+
+    @post_complex_item
+    def test_patch_empty_list(self):
+        """
+        Sadly, in default mode (use_atomic_update_for_patch=True) this raises
+        error and there is no way (except for patching eve) to workaround this
+        without doing another mongo fetch (and break atomicity), which is the
+        way how it is done.
+        """
+        # empty one
         response = self.do_patch(data='{"l": []}')
         self.assert_correct_etag(response)
-        self.assertEqual(ComplexDoc.objects[0].l, [])
-        self.assertEqual(ComplexDoc.objects[0].i.a, "hello")
+        doc = ComplexDoc.objects[0]
+        self.assertEqual(doc.l, [])
+        self.assertEqual(doc.i.a, "hello")
+
+    @post_complex_item
+    def test_patch_empty_list_and_empty_dict(self):
+        # empty one
+        response = self.do_patch(data='{"l": [], "d": {}}')
+        self.assert_correct_etag(response)
+        doc = ComplexDoc.objects[0]
+        self.assertEqual(doc.l, [])
+        self.assertEqual(doc.d, {})
+        self.assertEqual(doc.i.a, "hello")
+
+    @post_complex_item
+    def test_patch_list_in_list(self):
+        self.assertEqual(ComplexDoc.objects[0].p[0].ll, ["q", "w"])
+        response = self.do_patch(data='{"p": [{"ll": ["y"]}]}')
+        self.assert_correct_etag(response)
+        self.etag = response.get_json()[config.ETAG]
+        doc = ComplexDoc.objects[0]
+        self.assertEqual(doc.p[0].ll, ["y"])
+
+    @post_complex_item
+    def test_patch_empty_list_in_list(self):
+        self.assertEqual(ComplexDoc.objects[0].p[0].ll, ["q", "w"])
+        response = self.do_patch(data='{"p": [{"ll": []}]}')
+        self.assert_correct_etag(response)
+        self.etag = response.get_json()[config.ETAG]
+        doc = ComplexDoc.objects[0]
+        self.assertEqual(doc.p[0].ll, [])
 
     def test_patch_subresource(self):
         # create new resource and subresource
