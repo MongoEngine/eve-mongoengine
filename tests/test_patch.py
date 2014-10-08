@@ -26,7 +26,8 @@ def post_simple_item(f):
 
 def post_complex_item(f):
     def wrapper(self):
-        payload = '{"i": {"a": "hello"}, "d": {"x": null}, "l": ["m", "n"]}'
+        payload = '{"i": {"a": "hello"}, "d": {"x": null}, "l": ["m", "n"], '+\
+                  '"o": [{"a":"hi"},{"b":9}]}'
         response = self.client.post('/complexdoc/',
                                     data=payload,
                                     content_type='application/json')
@@ -99,6 +100,14 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(ComplexDoc.objects[0].i.a, "hello")
         response = self.do_patch(data='{"i": {"a": "bye"}}')
         self.assertEqual(ComplexDoc.objects[0].i.a, "bye")
+
+    @post_complex_item
+    def test_patch_embedded_document_in_list(self):
+        self.assertEqual(ComplexDoc.objects[0].o[0].a, "hi")
+        self.assertEqual(len(ComplexDoc.objects[0].o), 2)
+        response = self.do_patch(data='{"o": [{"a": "bye"}]}')
+        self.assertEqual(ComplexDoc.objects[0].o[0].a, "bye")
+        self.assertEqual(len(ComplexDoc.objects[0].o), 1)
 
     @post_complex_item
     def test_patch_list(self):

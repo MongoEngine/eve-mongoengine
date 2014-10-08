@@ -22,7 +22,7 @@ from werkzeug.exceptions import HTTPException
 from flask import abort
 import pymongo
 from mongoengine import (DoesNotExist, EmbeddedDocumentField, DictField,
-                         MapField, ListField, FileField, ReferenceField)
+                         MapField, ListField, FileField)
 from mongoengine.connection import get_db, connect
 
 # eve
@@ -363,24 +363,23 @@ class MongoengineDataLayer(Mongo):
         qry = self._objects(resource)(id=id_)
         qry.update_one(write_concern=self._wc(resource), **kwargs)
 
+    def _update_document(self, doc, updates):
+        """
+        Makes appropriate calls to update mongoengine document properly by
+        update definition given from REST API.
+        """
+        for db_field, value in iteritems(updates):
+            field_name = doc._reverse_db_field_map[db_field]
+            field = doc._fields[field_name]
+            doc[field_name] = field.to_python(value)
+        return doc
+
     def _update_using_save(self, resource, id_, updates):
         """
         Updates one document non-atomically using Document.save().
         """
-        cls = self._get_model_cls(resource)
         model = self._objects(resource)(id=id_).get()
-        for db_field, value in iteritems(updates):
-            field_name = cls._reverse_db_field_map[db_field]
-            field = cls._fields[field_name]
-            if isinstance(field, ReferenceField):
-                value = field.to_python(value)
-            if isinstance(field, EmbeddedDocumentField):
-                # FIXME: resolve embedded document in embedded document
-                embedded = getattr(model, field_name)
-                for attr, val in iteritems(value):
-                    setattr(embedded, attr, val)
-                continue
-            model[field_name] = value
+        self._update_document(model, updates)
         model.save(write_concern=self._wc(resource))
 
     def update(self, resource, id_, updates):
