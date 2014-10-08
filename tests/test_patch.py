@@ -57,9 +57,15 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
                                  content_type='application/json',
                                  headers=headers)
 
+    def assert_correct_etag(self, patch_response):
+        etag = patch_response.get_json()[config.ETAG]
+        get_etag = self.client.get(self.url).get_json()[config.ETAG]
+        self.assertEqual(etag, get_etag)
+
     @post_simple_item
     def test_patch_overwrite_all(self):
-        self.do_patch(data='{"a": "greg", "b": 300}')
+        patch_response = self.do_patch(data='{"a": "greg", "b": 300}')
+        self.assert_correct_etag(patch_response)
         response = self.client.get(self.url).get_json()
         self.assertIn('a', response)
         self.assertEqual(response['a'], "greg")
@@ -70,7 +76,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     def test_patch_overwrite_subset(self):
         # test what was really updated
         raw = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
-        self.do_patch(data='{"a": "greg"}')
+        response = self.do_patch(data='{"a": "greg"}')
+        self.assert_correct_etag(response)
         expected = dict(raw)
         expected['a'] = 'greg'
         real = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
@@ -90,6 +97,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(test.i.a, "hello")
         # do PATCH
         response = self.do_patch(data='{"d": {"x": "789"}}')
+        self.assert_correct_etag(response)
         real = ComplexDoc.objects[0]
         self.assertEqual(real.d['x'], "789")
         self.assertListEqual(real.l, ['m', 'n'])
@@ -99,6 +107,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     def test_patch_embedded_document(self):
         self.assertEqual(ComplexDoc.objects[0].i.a, "hello")
         response = self.do_patch(data='{"i": {"a": "bye"}}')
+        self.assert_correct_etag(response)
         self.assertEqual(ComplexDoc.objects[0].i.a, "bye")
 
     @post_complex_item
@@ -106,6 +115,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(ComplexDoc.objects[0].o[0].a, "hi")
         self.assertEqual(len(ComplexDoc.objects[0].o), 2)
         response = self.do_patch(data='{"o": [{"a": "bye"}]}')
+        self.assert_correct_etag(response)
         self.assertEqual(ComplexDoc.objects[0].o[0].a, "bye")
         self.assertEqual(len(ComplexDoc.objects[0].o), 1)
 
@@ -113,6 +123,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     def test_patch_list(self):
         self.assertEqual(ComplexDoc.objects[0].l, ["m", "n"])
         response = self.do_patch(data='{"l": []}')
+        self.assert_correct_etag(response)
         self.assertEqual(ComplexDoc.objects[0].l, [])
         self.assertEqual(ComplexDoc.objects[0].i.a, "hello")
 
