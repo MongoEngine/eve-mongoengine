@@ -146,9 +146,6 @@ class MongoengineDataLayer(Mongo):
             if self._etag_doc is None:
                 return
             # make doc from which the etag will be computed
-            for key, value in iteritems(dict(self._etag_doc)):
-                if value == []:
-                    self._etag_doc.pop(key)
             etag_doc = self._clean_doc(self._etag_doc)
             # load the response back agagin from json
             d = json.loads(payload.get_data(as_text=True))
