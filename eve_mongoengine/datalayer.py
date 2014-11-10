@@ -21,8 +21,7 @@ import traceback
 from werkzeug.exceptions import HTTPException
 from flask import abort
 import pymongo
-from mongoengine import (DoesNotExist, EmbeddedDocumentField, DictField,
-                         MapField, ListField, FileField)
+from mongoengine import (DoesNotExist, FileField)
 from mongoengine.connection import get_db, connect
 
 # eve
@@ -34,7 +33,7 @@ from eve.utils import (
 from eve.exceptions import ConfigException
 
 # Python3 compatibility
-from ._compat import itervalues, iteritems
+from ._compat import iteritems
 
 
 def _itemize(maybe_dict):
@@ -44,6 +43,18 @@ def _itemize(maybe_dict):
         return iteritems(maybe_dict)
     else:
         raise TypeError("Wrong type to itemize. Allowed lists and dicts.")
+
+
+def clean_doc(doc):
+    """
+    Cleans empty datastructures from mongoengine document (model instance).
+
+    The purpose of this is to get proper etag.
+    """
+    for attr, value in iteritems(dict(doc)):
+        if isinstance(value, (list, dict)) and not value:
+            del doc[attr]
+    return doc
 
 
 class PymongoQuerySet(object):
@@ -83,6 +94,146 @@ class MongoengineJsonEncoder(MongoJSONEncoder):
             return super(MongoengineJsonEncoder, self).default(obj)
 
 
+class ResourceClassMap(object):
+    """
+    Helper class providing translation from resource names to mongoengine
+    models and their querysets.
+    """
+    def __init__(self, datalayer):
+        self.datalayer = datalayer
+
+    def __getitem__(self, resource):
+        try:
+            return self.datalayer.models[resource]
+        except KeyError:
+            abort(404)
+
+    def objects(self, resource):
+        """
+        Returns QuerySet instance of resource's class thourh mongoengine
+        QuerySetManager. If there is some different queryset_manager
+        defined in the MongoengineDataLayer class, it tries to use that one
+        first.
+        """
+        _cls = self[resource]
+        try:
+            return getattr(_cls, self.datalayer.default_queryset)
+        except AttributeError:
+            # falls back to default `objects` QuerySet
+            return _cls.objects
+
+
+class MongoengineUpdater(object):
+    """
+    Helper class for managing updates (PATCH requests) through mongoengine
+    ODM layer.
+
+    Updates are managed in this class cecause sometimes things need to get
+    drity and there would be unnecessary 'helper' methods in the main class
+    MongoengineDataLayer causing namespace pollution.
+    """
+    def __init__(self, datalayer):
+        self.datalayer = datalayer
+        self._etag_doc = None
+        self.install_etag_fixer()
+
+    def install_etag_fixer(self):
+        """
+        Fixes ETag value returned by PATCH responses.
+        """
+        def fix_patch_etag(resource, request, payload):
+            if self._etag_doc is None:
+                return
+            # make doc from which the etag will be computed
+            etag_doc = clean_doc(self._etag_doc)
+            # load the response back agagin from json
+            d = json.loads(payload.get_data(as_text=True))
+            # compute new etag
+            d[config.ETAG] = document_etag(etag_doc)
+            payload.set_data(json.dumps(d))
+        # register post PATCH hook into current application
+        self.datalayer.app.on_post_PATCH += fix_patch_etag
+
+    def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
+        """
+        Transforms update dict to special mongoengine syntax with set__,
+        unset__ etc.
+        """
+        field_cls = self.datalayer.cls_map[resource]
+        nopfx = lambda x: field_cls._reverse_db_field_map[x]
+        return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
+
+    def _has_empty_list_recurse(self, value):
+        if value == []:
+            return True
+        if isinstance(value, dict):
+            return self._has_empty_list(value)
+        elif isinstance(value, list):
+            for val in value:
+                if self._has_empty_list_recurse(val):
+                    return True
+        return False
+
+    def _has_empty_list(self, updates):
+        """
+        Traverses updates and returns True if there is update to empty list.
+        """
+        for key, value in iteritems(updates):
+            if self._has_empty_list_recurse(value):
+                return True
+        return False
+
+    def _update_using_update_one(self, resource, id_, updates):
+        """
+        Updates one document atomically using QuerySet.update_one().
+        """
+        kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
+                                                               updates)
+        qset = lambda: self.datalayer.cls_map.objects(resource)
+        qry = qset()(id=id_)
+        qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
+        if self._has_empty_list(updates):
+            # Fix Etag when updating to empty list
+            model = qset()(id=id_).get()
+            self._etag_doc = dict(model.to_mongo())
+        else:
+            self._etag_doc = None
+
+    def _update_document(self, doc, updates):
+        """
+        Makes appropriate calls to update mongoengine document properly by
+        update definition given from REST API.
+        """
+        for db_field, value in iteritems(updates):
+            field_name = doc._reverse_db_field_map[db_field]
+            field = doc._fields[field_name]
+            doc[field_name] = field.to_python(value)
+        return doc
+
+    def _update_using_save(self, resource, id_, updates):
+        """
+        Updates one document non-atomically using Document.save().
+        """
+        model = self.datalayer.cls_map.objects(resource)(id=id_).get()
+        self._update_document(model, updates)
+        model.save(write_concern=self.datalayer._wc(resource))
+        # Fix Etag when updating to empty list
+        self._etag_doc = dict(model.to_mongo())
+
+    def update(self, resource, id_, updates):
+        """
+        Resolves update for PATCH request.
+
+        Does not handle mongo errros!
+        """
+        opt = self.datalayer.mongoengine_options
+        if opt.get('use_atomic_update_for_patch', 1):
+            self._update_using_update_one(resource, id_, updates)
+        else:
+            self._update_using_save(resource, id_, updates)
+        return self._etag_doc
+
+
 class MongoengineDataLayer(Mongo):
     """
     Data layer for eve-mongoengine extension.
@@ -91,9 +242,6 @@ class MongoengineDataLayer(Mongo):
     """
     #: default JSON encoder
     json_encoder_class = MongoengineJsonEncoder
-
-    #: list of mongoengine field types, which consist of another fields
-    _structured_fields = (EmbeddedDocumentField, DictField, MapField)
 
     #: name of default queryset, where datalayer asks for data
     default_queryset = 'objects'
@@ -133,27 +281,10 @@ class MongoengineDataLayer(Mongo):
         # authenticate
         if any(auth):
             self.driver.db.authenticate(username, password)
-        # FIX wrongly generated etags because of empty lists
-        self._install_etag_fixer()
-
-    def _install_etag_fixer(self):
-        """
-        Fixes ETag value returned by PATCH responses.
-        """
-        self._etag_doc = None
-
-        def fix_patch_etag(resource, request, payload):
-            if self._etag_doc is None:
-                return
-            # make doc from which the etag will be computed
-            etag_doc = self._clean_doc(self._etag_doc)
-            # load the response back agagin from json
-            d = json.loads(payload.get_data(as_text=True))
-            # compute new etag
-            d[config.ETAG] = document_etag(etag_doc)
-            payload.set_data(json.dumps(d))
-
-        self.app.on_post_PATCH += fix_patch_etag
+        # helper object for managing PATCHes, which are a bit dirty
+        self.updater = MongoengineUpdater(self)
+        # map resource -> Mongoengine class
+        self.cls_map = ResourceClassMap(self)
 
     def _handle_exception(self, exc):
         """
@@ -162,18 +293,6 @@ class MongoengineDataLayer(Mongo):
         if self.app.debug:
             traceback.print_exc(file=sys.stderr)
         raise exc
-
-    def _structure_in_model(self, model_cls):
-        """
-        Returns True if model contains some kind of structured field.
-        """
-        for field in itervalues(model_cls._fields):
-            if isinstance(field, self._structured_fields):
-                return True
-            elif isinstance(field, ListField):
-                if isinstance(field.field, self._structured_fields):
-                    return True
-        return False
 
     def _projection(self, resource, projection, qry):
         """
@@ -187,7 +306,7 @@ class MongoengineDataLayer(Mongo):
 
         # strip special underscore prefixed attributes -> in mongoengine
         # they arent prefixed
-        model_cls = self._get_model_cls(resource)
+        model_cls = self.cls_map[resource]
         projection.discard('_id')
         rev_map = model_cls._reverse_db_field_map
         projection = [rev_map[field] for field in projection]
@@ -199,20 +318,6 @@ class MongoengineDataLayer(Mongo):
             qry = qry.only(*projection)
         return qry
 
-    def _get_model_cls(self, resource):
-        try:
-            return self.models[resource]
-        except KeyError:
-            abort(404)
-
-    def _objects(self, resource):
-        _cls = self._get_model_cls(resource)
-        try:
-            return getattr(_cls, self.default_queryset)
-        except AttributeError:
-            # falls back to default `objects` QuerySet
-            return _cls.objects
-
     def find(self, resource, req, sub_resource_lookup):
         """
         Seach for results and return list of them.
@@ -221,7 +326,7 @@ class MongoengineDataLayer(Mongo):
         :param req: instance of :class:`eve.utils.ParsedRequest`.
         :param sub_resource_lookup: sub-resource lookup from the endpoint url.
         """
-        qry = self._objects(resource)
+        qry = self.cls_map.objects(resource)
 
         client_projection = {}
         client_sort = {}
@@ -302,7 +407,7 @@ class MongoengineDataLayer(Mongo):
             resource,
             lookup,
             client_projection)
-        qry = self._objects(resource)
+        qry = self.cls_map.objects(resource)
 
         if len(filter_) > 0:
             qry = qry.filter(__raw__=filter_)
@@ -310,14 +415,14 @@ class MongoengineDataLayer(Mongo):
         qry = self._projection(resource, projection, qry)
         try:
             doc = dict(qry.get().to_mongo())
-            return self._clean_doc(doc)
+            return clean_doc(doc)
         except DoesNotExist:
             return None
 
     def _doc_to_model(self, resource, doc):
         if '_id' in doc:
             doc['id'] = doc.pop('_id')
-        cls = self._get_model_cls(resource)
+        cls = self.cls_map[resource]
         instance = cls(**doc)
         for attr, field in iteritems(cls._fields):
             # Inject GridFSProxy object into the instance for every FileField.
@@ -333,13 +438,6 @@ class MongoengineDataLayer(Mongo):
                     instance._data[attr] = proxy
         return instance
 
-    def _clean_doc(self, doc):
-        """Cleans empty datastructured to get proper etag"""
-        for attr, value in iteritems(dict(doc)):
-            if isinstance(value, (list, dict)) and not value:
-                del doc[attr]
-        return doc
-
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""
         datasource, filter_, _, _ = self._datasource_ex(resource)
@@ -352,14 +450,14 @@ class MongoengineDataLayer(Mongo):
                     ids.append(model.id)
                     doc.update(dict(model.to_mongo()))
                     doc[config.ID_FIELD] = model.id
-                    self._clean_doc(doc)
+                    clean_doc(doc)
                 return ids
             else:
                 model = self._doc_to_model(resource, doc_or_docs)
                 model.save(write_concern=self._wc(resource))
                 doc_or_docs.update(dict(model.to_mongo()))
                 doc_or_docs[config.ID_FIELD] = model.id
-                self._clean_doc(doc_or_docs)
+                clean_doc(doc_or_docs)
                 return model.id
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an
@@ -371,78 +469,10 @@ class MongoengineDataLayer(Mongo):
         except Exception as exc:
             self._handle_exception(exc)
 
-    def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
-        """
-        Transforms update dict to special mongoengine syntax with set__,
-        unset__ etc.
-        """
-        field_cls = self._get_model_cls(resource)
-        nopfx = lambda x: field_cls._reverse_db_field_map[x]
-        return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
-
-    def _has_empty_list_recurse(self, value):
-        if value == []:
-            return True
-        if isinstance(value, dict):
-            return self._has_empty_list(value)
-        elif isinstance(value, list):
-            for val in value:
-                if self._has_empty_list_recurse(val):
-                    return True
-        return False
-
-    def _has_empty_list(self, updates):
-        """
-        Traverses updates and returns True if there is update to empty list.
-        """
-        for key, value in iteritems(updates):
-            if self._has_empty_list_recurse(value):
-                return True
-        return False
-
-    def _update_using_update_one(self, resource, id_, updates):
-        """
-        Updates one document atomically using QuerySet.update_one().
-        """
-        kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
-                                                               updates)
-        qry = self._objects(resource)(id=id_)
-        qry.update_one(write_concern=self._wc(resource), **kwargs)
-        if self._has_empty_list(updates):
-            # Fix Etag when updating to empty list
-            model = self._objects(resource)(id=id_).get()
-            self._etag_doc = dict(model.to_mongo())
-        else:
-            self._etag_doc = None
-
-    def _update_document(self, doc, updates):
-        """
-        Makes appropriate calls to update mongoengine document properly by
-        update definition given from REST API.
-        """
-        for db_field, value in iteritems(updates):
-            field_name = doc._reverse_db_field_map[db_field]
-            field = doc._fields[field_name]
-            doc[field_name] = field.to_python(value)
-        return doc
-
-    def _update_using_save(self, resource, id_, updates):
-        """
-        Updates one document non-atomically using Document.save().
-        """
-        model = self._objects(resource)(id=id_).get()
-        self._update_document(model, updates)
-        model.save(write_concern=self._wc(resource))
-        # Fix Etag when updating to empty list
-        self._etag_doc = dict(model.to_mongo())
-
     def update(self, resource, id_, updates):
         """Called when performing PATCH request."""
         try:
-            if self.mongoengine_options.get('use_atomic_update_for_patch', 1):
-                self._update_using_update_one(resource, id_, updates)
-            else:
-                self._update_using_save(resource, id_, updates)
+            return self.updater.update(resource, id_, updates)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
             abort(500, description=debug_error_message(
@@ -472,9 +502,9 @@ class MongoengineDataLayer(Mongo):
 
         try:
             if not filter_:
-                qry = self._objects(resource)
+                qry = self.cls_map.objects(resource)
             else:
-                qry = self._objects(resource)(__raw__=filter_)
+                qry = self.cls_map.objects(resource)(__raw__=filter_)
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
