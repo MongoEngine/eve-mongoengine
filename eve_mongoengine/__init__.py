@@ -24,7 +24,7 @@ from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
 
-__version__ = "0.0.7"
+__version__ = "0.0.8"
 
 
 def get_utc_time():
