@@ -244,4 +244,4 @@ def fix_last_updated(sender, document, **kwargs):
     if field_name in document:
         document[field_name] = get_utc_time()
 
-mongoengine.signals.pre_save_post_validation.connect(fix_last_updated)
+mongoengine.signals.pre_save.connect(fix_last_updated)
