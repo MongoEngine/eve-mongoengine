@@ -390,7 +390,7 @@ class MongoengineDataLayer(Mongo):
         qry = self._projection(resource, projection, qry)
         # apply limits
         if req.max_results:
-            qry = qry.limit(req.max_results)
+            qry = qry.limit(int(req.max_results))
         if req.page > 1:
             qry = qry.skip((req.page - 1) * req.max_results)
         return PymongoQuerySet(qry)
