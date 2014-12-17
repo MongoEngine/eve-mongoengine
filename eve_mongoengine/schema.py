@@ -114,6 +114,11 @@ class SchemaMapper(object):
             cerberus_type = cls._mongoengine_to_cerberus[best_matching_cls]
             fdict['type'] = cerberus_type
 
+            # Allow null, which causes field to be deleted from db.
+            # This cannot be fetched from field.null, because it would
+            # cause allowance of nulls in db. We only want nulls in REST API.
+            fdict['nullable'] = True
+
             if isinstance(field, EmbeddedDocumentField):
                 fdict['schema'] = cls.create_schema(field.document_type)
             if isinstance(field, ListField):
