@@ -309,6 +309,7 @@ class MongoengineDataLayer(Mongo):
         model_cls = self.cls_map[resource]
         projection.discard('_id')
         rev_map = model_cls._reverse_db_field_map
+        projection = {k for k in projection if rev_map.get(k, None) is not None}
         projection = [rev_map[field] for field in projection]
         if 0 in projection_value:
             qry = qry.exclude(*projection)
