@@ -160,6 +160,7 @@ class MongoengineUpdater(object):
         unset__ etc.
         """
         field_cls = self.datalayer.cls_map[resource]
+        updates.pop('_etag', None)
         nopfx = lambda x: field_cls._reverse_db_field_map[x]
         return dict(("set__%s" % nopfx(k), v) for (k, v) in iteritems(updates))
 
