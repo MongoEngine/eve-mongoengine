@@ -32,14 +32,19 @@ class EveMongoengineValidator(Validator):
         schema and if it does not fail, repeats the same against mongoengine
         validation machinery.
         """
-
         # call default eve's validator
         if not Validator.validate(self, document, schema, update, context):
             return False
 
         # validate using mongoengine field validators
-        if self.resource:
+        if self.resource and context is None:
             model_cls = app.data.models[self.resource]
+
+            # We must translate any database field names to their corresponding
+            # MongoEngine names before attempting to validate them.
+            translate = lambda x: model_cls._reverse_db_field_map.get(x, x)
+            document = {translate(k): document[k] for k in document}
+
             doc = model_cls(**document)
             # rewind all file-like's
             for attr, field in iteritems(model_cls._fields):

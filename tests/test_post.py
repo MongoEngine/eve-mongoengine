@@ -2,16 +2,27 @@
 from datetime import datetime
 import unittest
 import json
+from distutils.version import LooseVersion
 
 from eve_mongoengine import EveMongoengine
+
 from eve.utils import config
+from eve import __version__
+EVE_VERSION = LooseVersion(__version__)
+
 from tests import (
     BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc,
     WrongDoc, HawkeyDoc, SETTINGS
 )
 
+# Starting with Eve 0.5 - Validation errors response codes are configurable.
+try:
+    POST_VALIDATION_ERROR_CODE = config.VALIDATION_ERROR_STATUS
+except AttributeError:
+    POST_VALIDATION_ERROR_CODE = 400
 
 class TestHttpPost(BaseTest, unittest.TestCase):
+
     def test_post_simple(self):
         now = datetime.now()
         response = self.client.post('/simpledoc/',
@@ -30,7 +41,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/simpledoc/',
                                     data='{"a":123}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertIn(config.STATUS, json_data)
         self.assertEqual(json_data[config.STATUS], "ERR")
@@ -41,14 +52,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho", "c": "x", "d": "<10 chars", "e": "<10 chars"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'e': "min length is 10"})
         # break max_length
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho", "c": "x", "d": "string > 10 chars", "e": "some very long text"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'d': "max length is 10"})
 
@@ -57,7 +68,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"b": "ho", "c": "x"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'a': "required field"})
 
@@ -70,7 +81,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "hi", "b": "ho"}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'b': "value 'ho' is not unique"})
 
@@ -79,14 +90,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "xoxo", "b": "xaxa", "f": 3}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'f': "min value is 5"})
 
         response = self.client.post('/limiteddoc/',
                                     data='{"a": "xuxu", "b": "xixi", "f": 15}',
                                     content_type='application/json')
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'f': "max value is 10"})
 
@@ -138,4 +149,3 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         # verify etag
         resp = self.client.get('/hawkeydoc/%s' % resp_json['_id'])
         self.assertEqual(etag, resp.get_json()[config.ETAG])
-        

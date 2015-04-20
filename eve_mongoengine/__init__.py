@@ -24,7 +24,7 @@ from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 
 
-__version__ = "0.0.9"
+__version__ = "0.0.10"
 
 
 def get_utc_time():
@@ -150,19 +150,22 @@ class EveMongoengine(object):
             if not issubclass(model_cls, mongoengine.Document):
                 raise TypeError("Class '%s' is not a subclass of "
                                 "mongoengine.Document." % model_cls.__name__)
-            schema = self.schema_mapper_class.create_schema(model_cls,
-                                                            lowercase)
+
             resource_name = model_cls.__name__
             if lowercase:
                 resource_name = resource_name.lower()
+
+            # add new fields to model class to get proper Eve functionality
+            self.fix_model_class(model_cls)
+            self.models[resource_name] = model_cls
+
+            schema = self.schema_mapper_class.create_schema(model_cls,
+                                                            lowercase)
             # create resource settings
             resource_settings = Settings({'schema': schema})
             resource_settings.update(settings)
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
-            # add new fields to model class to get proper Eve functionality
-            self.fix_model_class(model_cls)
-            self.models[resource_name] = model_cls
             # add sub-resource functionality for every ReferenceField
             subresources = self.schema_mapper_class.get_subresource_settings
             for registration in subresources(model_cls, resource_name,

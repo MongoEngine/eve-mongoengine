@@ -16,21 +16,30 @@ import ast
 import json
 from uuid import UUID
 import traceback
+from distutils.version import LooseVersion
 
-# 3rd party
-from werkzeug.exceptions import HTTPException
-from flask import abort
-import pymongo
+# --- Third Party ---
+
+# MongoEngine
+from mongoengine import __version__
 from mongoengine import (DoesNotExist, FileField)
 from mongoengine.connection import get_db, connect
 
-# eve
+MONGOENGINE_VERSION = LooseVersion(__version__)
+
+# Eve
 from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
 from eve.utils import (
     config, debug_error_message, validate_filters, document_etag
 )
 from eve.exceptions import ConfigException
+
+# Misc
+from werkzeug.exceptions import HTTPException
+from flask import abort
+import pymongo
+
 
 # Python3 compatibility
 from ._compat import iteritems
@@ -47,13 +56,16 @@ def _itemize(maybe_dict):
 
 def clean_doc(doc):
     """
-    Cleans empty datastructures from mongoengine document (model instance).
+    Cleans empty datastructures from mongoengine document (model instance)
+    and remove any _etag fields.
 
     The purpose of this is to get proper etag.
     """
     for attr, value in iteritems(dict(doc)):
         if isinstance(value, (list, dict)) and not value:
             del doc[attr]
+    doc.pop('_etag', None)
+
     return doc
 
 
@@ -227,6 +239,9 @@ class MongoengineUpdater(object):
         Does not handle mongo errros!
         """
         opt = self.datalayer.mongoengine_options
+
+        updates.pop('_etag', None)
+
         if opt.get('use_atomic_update_for_patch', 1):
             self._update_using_update_one(resource, id_, updates)
         else:
@@ -301,15 +316,21 @@ class MongoengineDataLayer(Mongo):
         if projection is None:
             return qry
 
+        model_cls = self.cls_map[resource]
+
         projection_value = set(projection.values())
         projection = set(projection.keys())
 
         # strip special underscore prefixed attributes -> in mongoengine
         # they arent prefixed
-        model_cls = self.cls_map[resource]
         projection.discard('_id')
-        rev_map = model_cls._reverse_db_field_map
-        projection = [rev_map[field] for field in projection]
+
+        # We must translate any database field names to their corresponding
+        # MongoEngine names before attempting to use them.
+        translate = lambda x: model_cls._reverse_db_field_map.get(x)
+        projection = [translate(field) for field in projection if
+                      field in model_cls._reverse_db_field_map]
+    
         if 0 in projection_value:
             qry = qry.exclude(*projection)
         else:
@@ -420,10 +441,32 @@ class MongoengineDataLayer(Mongo):
             return None
 
     def _doc_to_model(self, resource, doc):
+
+        # Strip underscores from special key names
         if '_id' in doc:
             doc['id'] = doc.pop('_id')
+
         cls = self.cls_map[resource]
-        instance = cls(**doc)
+
+        # We must translate any database field names to their corresponding
+        # MongoEngine names before attempting to use them.
+        translate = lambda x: cls._reverse_db_field_map.get(x, x)
+        doc = {translate(k): doc[k] for k in doc}
+
+        # MongoEngine 0.9 now throws an FieldDoesNotExist when initializing a
+        # Document with unknown keys.
+        if MONGOENGINE_VERSION >= LooseVersion("0.9.0"):
+            from mongoengine import FieldDoesNotExist
+            doc_keys = set(cls._fields) & set(doc)
+            try:
+                instance = cls(**{k: doc[k] for k in doc_keys})
+            except FieldDoesNotExist as e:
+                abort(422, description=debug_error_message(
+                    'mongoengine.FieldDoesNotExist: %s' % e
+                ))
+        else:
+            instance = cls(**doc)
+
         for attr, field in iteritems(cls._fields):
             # Inject GridFSProxy object into the instance for every FileField.
             # This is because the Eve's GridFS layer does not work with the
@@ -442,23 +485,21 @@ class MongoengineDataLayer(Mongo):
         """Called when performing POST request"""
         datasource, filter_, _, _ = self._datasource_ex(resource)
         try:
-            if isinstance(doc_or_docs, list):
-                ids = []
-                for doc in doc_or_docs:
-                    model = self._doc_to_model(resource, doc)
-                    model.save(write_concern=self._wc(resource))
-                    ids.append(model.id)
-                    doc.update(dict(model.to_mongo()))
-                    doc[config.ID_FIELD] = model.id
-                    clean_doc(doc)
-                return ids
-            else:
-                model = self._doc_to_model(resource, doc_or_docs)
+            if not isinstance(doc_or_docs, list):
+                doc_or_docs = [doc_or_docs]
+
+            ids = []
+            for doc in doc_or_docs:
+                model = self._doc_to_model(resource, doc)
                 model.save(write_concern=self._wc(resource))
-                doc_or_docs.update(dict(model.to_mongo()))
-                doc_or_docs[config.ID_FIELD] = model.id
-                clean_doc(doc_or_docs)
-                return model.id
+                ids.append(model.id)
+                doc.update(dict(model.to_mongo()))
+                doc[config.ID_FIELD] = model.id
+                # Recompute ETag since MongoEngine can modify the data via
+                # save hooks.
+                clean_doc(doc)
+                doc['_etag'] = document_etag(doc)
+            return ids
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an
             # existing ReplicaSet which doesn't exist. Please note that the
@@ -469,7 +510,7 @@ class MongoengineDataLayer(Mongo):
         except Exception as exc:
             self._handle_exception(exc)
 
-    def update(self, resource, id_, updates):
+    def update(self, resource, id_, updates, *args, **kwargs):
         """Called when performing PATCH request."""
         try:
             return self.updater.update(resource, id_, updates)
@@ -481,7 +522,7 @@ class MongoengineDataLayer(Mongo):
         except Exception as exc:
             self._handle_exception(exc)
 
-    def replace(self, resource, id_, document):
+    def replace(self, resource, id_, document, *args, **kwargs):
         """Called when performing PUT request."""
         try:
             # FIXME: filters?

@@ -1,18 +1,35 @@
 language: python
+services: mongodb
 python:
-  - "3.3"
-  - "2.7"
+- '2.7'
+- '3.2'
+- '3.3'
+- '3.4'
+- pypy
+- pypy3
+env:
+- EVE=0.5.3 MONGOENGINE=0.8.7
+- EVE=0.5.3 MONGOENGINE=0.9
+- EVE=0.5.3 MONGOENGINE=dev
+- EVE=prod MONGOENGINE=0.8.7
+- EVE=prod MONGOENGINE=0.9
+- EVE=prod MONGOENGINE=dev
+- EVE=dev MONGOENGINE=0.8.7
+- EVE=dev MONGOENGINE=0.9
+- EVE=dev MONGOENGINE=dev
+matrix:
+  allow_failures:
+  - python: pypy3
+  fast_finish: true
 install:
-  - pip install flake8
-  - pip install -r requirements.txt
-script: 
-  - flake8 eve_mongoengine
-  - python setup.py test
-services: 
-  - mongodb
-before_script:
-  - "ulimit -n 1024"
-  - mongo eve_test --eval 'db.addUser("test_user", "test_pw");'
-branches:
-  only:
-    - master
+- sudo apt-get install python-dev python3-dev
+- if [[ $EVE == 'dev' ]]; then travis_retry pip install https://github.com/nicolaiarocci/eve/tarball/develop;
+  elif [[ $EVE == 'prod' ]]; then travis_retry pip install https://github.com/nicolaiarocci/eve/tarball/master;
+  else travis_retry pip install eve==$EVE;
+  fi
+- if [[ $MONGOENGINE == 'dev' ]]; then travis_retry pip install https://github.com/MongoEngine/mongoengine/tarball/master;
+  else travis_retry pip install mongoengine==$MONGOENGINE;
+  fi
+- travis_retry python setup.py install
+script:
+- travis_retry python setup.py test

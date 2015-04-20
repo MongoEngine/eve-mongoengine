@@ -3,10 +3,13 @@ from io import BytesIO
 import base64
 import unittest
 from bson import ObjectId
+from distutils.version import LooseVersion
 
 import eve
 from eve.utils import config
 from eve import STATUS_OK, ID_FIELD, STATUS, STATUS_ERR, ISSUES, ETAG
+EVE_VERSION = LooseVersion(eve.__version__)
+
 from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
                    WrongDoc, FieldsDoc, PrimaryKeyDoc, SETTINGS)
 from eve_mongoengine._compat import iteritems
@@ -128,7 +131,11 @@ class TestMedia(BaseTest, unittest.TestCase):
         headers = [('If-Match', etag)]
 
         resp = self.client.delete('/fieldsdoc/%s' % _id, headers=headers)
-        self.assertEqual(resp.status_code, 200)
+        # Starting with Eve 0.5 - DELETE returns a 204.
+        if EVE_VERSION >= LooseVersion("0.5"):
+            self.assertEqual(resp.status_code, 204)
+        else:
+            self.assertEqual(resp.status_code, 200)
 
         # media doesn't exist anymore (it's been deleted)
 

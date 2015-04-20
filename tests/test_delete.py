@@ -1,6 +1,11 @@
 
 import unittest
+from distutils.version import LooseVersion
+
 from eve.utils import config
+from eve import __version__
+EVE_VERSION = LooseVersion(__version__)
+
 from tests import BaseTest, SimpleDoc, ComplexDoc
 
 class TestHttpDelete(BaseTest, unittest.TestCase):
@@ -26,7 +31,11 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
     def test_delete_item(self):
         url = '/simpledoc/%s' % self._id
         r = self.delete(url)
-        self.assertEqual(r.status_code, 200)
+        # Starting with Eve 0.5 - DELETE returns a 204.
+        if EVE_VERSION >= LooseVersion("0.5"):
+            self.assertEqual(r.status_code, 204)
+        else:
+            self.assertEqual(r.status_code, 200)
         response = self.client.get('/simpledoc')
         self.assertEqual(response.status_code, 200)
         items = response.get_json()[config.ITEMS]
@@ -42,7 +51,11 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
     def test_delete_empty_resource(self):
         SimpleDoc.objects().delete()
         response = self.delete('/simpledoc')
-        self.assertEqual(response.status_code, 200)
+        # Starting with Eve 0.5 - DELETE returns a 204.
+        if EVE_VERSION >= LooseVersion("0.5"):
+            self.assertEqual(response.status_code, 204)
+        else:
+            self.assertEqual(response.status_code, 200)
 
     def test_delete_unknown_item(self):
         url = '/simpledoc/%s' % 'abc'
@@ -65,7 +78,11 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
         # delete subresource
         del_url = '/simpledoc/%s/complexdoc/%s' % (s.id, d.id)
         response = self.client.delete(del_url, headers=headers)
-        self.assertEqual(response.status_code, 200)
+        # Starting with Eve 0.5 - DELETE returns a 204.
+        if EVE_VERSION >= LooseVersion("0.5"):
+            self.assertEqual(response.status_code, 204)
+        else:
+            self.assertEqual(response.status_code, 200)
         # check, if really deleted
         response = self.client.get('/simpledoc/%s/complexdoc/%s' % (s.id, d.id))
         self.assertEqual(response.status_code, 404)
@@ -80,7 +97,11 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
         # delete subresources
         del_url = '/simpledoc/%s/complexdoc' % s.id
         response = self.client.delete(del_url)
-        self.assertEqual(response.status_code, 200)
+        # Starting with Eve 0.5 - DELETE returns a 204.
+        if EVE_VERSION >= LooseVersion("0.5"):
+            self.assertEqual(response.status_code, 204)
+        else:
+            self.assertEqual(response.status_code, 200)
         # check, if really deleted
         response = self.client.get('/simpledoc/%s/complexdoc' % s.id)
         json_data = response.get_json()
