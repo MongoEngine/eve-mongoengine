@@ -43,7 +43,7 @@ Optional Dependencies
 Examples
 ========
 
-Some simple examples of what MongoEngine code looks like:
+A simple example of what Eve-MongoEngine code looks like:
 
 .. code:: python
 
