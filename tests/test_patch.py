@@ -158,14 +158,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(doc.i.a, "hello")
 
     @post_complex_item
+    @unittest.skipIf(EVE_VERSION >= LooseVersion("0.5"), "Eve 0.5 Bug")
     def test_patch_empty_list_and_empty_dict(self):
-
-        # Eve >= 0.5 currently has a bug which ignores empty dictionaries
-        # during PATCH requests.
-        if EVE_VERSION >= LooseVersion("0.5"):
-            self.skipTest("Eve 0.5 currently contains a bug which prevents this"
-                          " test from passing. Skipping test for now...")
-
         # Empty List and Empty Dictionary
         response = self.do_patch(data='{"l": [], "d": {}}')
         self.assert_correct_etag(response)

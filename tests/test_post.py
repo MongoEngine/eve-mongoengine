@@ -7,8 +7,6 @@ from distutils.version import LooseVersion
 from eve_mongoengine import EveMongoengine
 
 from eve.utils import config
-from eve import __version__
-EVE_VERSION = LooseVersion(__version__)
 
 from tests import (
     BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc,
@@ -19,7 +17,8 @@ from tests import (
 try:
     POST_VALIDATION_ERROR_CODE = config.VALIDATION_ERROR_STATUS
 except AttributeError:
-    POST_VALIDATION_ERROR_CODE = 400
+    POST_VALIDATION_ERROR_CODE = 422
+
 
 class TestHttpPost(BaseTest, unittest.TestCase):
 

@@ -277,8 +277,8 @@ class MongoengineDataLayer(Mongo):
         :param ext: instance of :class:`EveMongoengine`.
         """
         # get authentication info
-        username = ext.app.config['MONGO_USERNAME']
-        password = ext.app.config['MONGO_PASSWORD']
+        username = ext.app.config.get('MONGO_USERNAME', None)
+        password = ext.app.config.get('MONGO_PASSWORD', None)
         auth = (username, password)
         if any(auth) and not all(auth):
             raise ConfigException('Must set both USERNAME and PASSWORD '
