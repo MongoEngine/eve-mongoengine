@@ -1,7 +1,17 @@
-*.py[cod]
+/.project
+/.pydevproject
+/.settings
+.ropeproject
 
-# C extensions
-*.so
+# Eve
+run.py
+settings.py
+
+# Python
+*.py[co]
+
+# Gedit
+*~
 
 # Packages
 *.egg
@@ -15,9 +25,7 @@ var
 sdist
 develop-eggs
 .installed.cfg
-lib
-lib64
-__pycache__
+.eggs
 
 # Installer logs
 pip-log.txt
@@ -25,20 +33,30 @@ pip-log.txt
 # Unit test / coverage reports
 .coverage
 .tox
-nosetests.xml
 
-# Translations
+#Translations
 *.mo
 
-# Mr Developer
+#Mr Developer
 .mr.developer.cfg
-.project
-.pydevproject
 
-# Vim
-.swp
+# SublimeText project files
+*.sublime-*
 
-# Documentation
-docs/_build
-docs/_static
-docs/_templates
+# vim temp files
+*.swp
+
+#virtualenv
+Include
+Lib
+Scripts
+
+#OSX
+.Python
+.DS_Store
+
+#Sphinx
+_build
+
+# PyCharm
+.idea

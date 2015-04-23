@@ -1,5 +1,5 @@
-eve-mongoengine 0.0.9
-=====================
+eve-mongoengine 0.0.10
+======================
 
 [![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
 [![Requirements Status](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements.png?branch=master)](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements/?branch=master)
@@ -13,6 +13,24 @@ models and auto-transforms it into creberus schema.
 
 **Official documentation:** http://eve-mongoengine.readthedocs.org/en/latest/
 
+##Requirements
+###Python
+- Python 2.7
+- Python 3.3
+- Python 3.4
+
+*Python 3.2 is not supported - use at your own risk.*
+
+### Eve
+- Eve 0.5+
+
+*Use a version earlier than 0.0.10 for Eve 0.4 support*
+
+###MongoEngine
+- 0.8.7
+- 0.9
+
+
 Install
 -------
 Simple installation using pip:
@@ -20,7 +38,7 @@ Simple installation using pip:
 
 It loads all dependencies as well.
 
-For development use virtualenv and editable copy of repisotory:
+For development use virtualenv and editable copy of repository:
 `pip install -e git+https://github.com/hellerstanislav/eve-mongoengine#egg=eve-mongoengine`
 
 Features
@@ -193,5 +211,4 @@ Limitations
 * You can use FileField (tested) and ImageField (not tested yet), but
   operation with files handles Eve's GridFS layer, not mongoengine's
   GridFSProxy!
-* Tested only on python 2.7 and 3.3.
 
