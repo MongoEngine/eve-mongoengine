@@ -207,26 +207,33 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             s.delete()
 
     def test_uppercase_resource_names(self):
-        # test default lowercase
+        # Sanity Check: the Default Setting is Uppercase Off
         response = self.client.get('/SimpleDoc')
         self.assertEqual(response.status_code, 404)
-        # uppercase
+
+        # Create a new Eve App with settings to allow Uppercase Resource Names
+        # in the URI.
         app = Eve(settings=SETTINGS)
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model(SimpleDoc, lowercase=False)
         client = app.test_client()
         d = SimpleDoc(a='Tom', b=223).save()
+
+        # Sanity Check: Lowercase is Disabled
+        response = client.get('/simpledoc/')
+        self.assertEqual(response.status_code, 404)
+
+        # Use the Uppercase Resource Name
         response = client.get('/SimpleDoc/')
         self.assertEqual(response.status_code, 200)
         json_data = response.get_json()
         expected_url = json_data[config.LINKS]['self']['href']
         if ':' in expected_url:
             expected_url = '/' + '/'.join( expected_url.split('/')[1:] )
-        self.assertEqual(expected_url, '/SimpleDoc')
-        # not lowercase when uppercase
-        response = client.get('/simpledoc/')
-        self.assertEqual(response.status_code, 404)
+        self.assertTrue('SimpleDoc' in expected_url)
+
+
 
 
     def test_get_subresource(self):

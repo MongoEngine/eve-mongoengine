@@ -41,7 +41,8 @@ class TestHttpPut(BaseTest, unittest.TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_put_overwrite_all(self):
-        self.do_put(data='{"a": "greg", "b": 300}')
+        response = self.do_put(data='{"a": "greg", "b": 300}')
+
         response = self.client.get(self.url).get_json()
         self.assertIn('a', response)
         self.assertEqual(response['a'], "greg")

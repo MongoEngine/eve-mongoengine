@@ -11,7 +11,7 @@ SETTINGS = {
     'MONGO_HOST': 'localhost',
     'MONGO_PORT': 27017,
     'MONGO_DBNAME': 'eve_mongoengine_test',
-    'DOMAIN': {'eve-mongoengine': {}}
+    'DOMAIN': {'eve-mongoengine': {}},
 }
 
 class Response(BaseResponse):
@@ -22,7 +22,18 @@ class Response(BaseResponse):
                 data = data.decode('utf-8')
             except UnicodeDecodeError:
                 pass
-            return json.loads(data)
+            json_data = json.loads(data)
+
+            # Convert the special keys back to _prefix
+            if 'id' in json_data:
+                json_data['_id'] = json_data.pop('id')
+            if 'created' in json_data:
+                json_data['_created'] = json_data.pop('created')
+            if 'updated' in json_data:
+                json_data['_updated'] = json_data.pop('updated')
+
+            return json_data
+
         else:
             raise TypeError("Not an application/json response")
 

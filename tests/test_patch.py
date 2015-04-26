@@ -3,7 +3,12 @@ from bson import ObjectId
 import json
 import time
 import unittest
+from distutils.version import LooseVersion
+
 from eve.utils import config
+from eve import __version__
+EVE_VERSION = LooseVersion(__version__)
+
 from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc
 
 
@@ -58,6 +63,12 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
                                  headers=headers)
 
     def assert_correct_etag(self, patch_response):
+        # Ensure clean response.
+        self.assertLess(patch_response.status_code, 300,
+                        "PATCH request failed. Returned {}.".format(
+                            patch_response.data
+                        ))
+
         etag = patch_response.get_json()[config.ETAG]
         get_resp = self.client.get(self.url).get_json()
         get_etag = get_resp[config.ETAG]
@@ -147,8 +158,9 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(doc.i.a, "hello")
 
     @post_complex_item
+    @unittest.skipIf(EVE_VERSION >= LooseVersion("0.5"), "Eve 0.5 Bug")
     def test_patch_empty_list_and_empty_dict(self):
-        # empty one
+        # Empty List and Empty Dictionary
         response = self.do_patch(data='{"l": [], "d": {}}')
         self.assert_correct_etag(response)
         doc = ComplexDoc.objects[0]

@@ -11,6 +11,7 @@
 
 import copy
 
+# MongoEngine Fields
 from mongoengine import (StringField, IntField, FloatField, BooleanField,
                          DateTimeField, ComplexDateTimeField, URLField,
                          EmailField, LongField, DecimalField, ListField,
@@ -18,6 +19,7 @@ from mongoengine import (StringField, IntField, FloatField, BooleanField,
                          MapField, UUIDField, ObjectIdField, LineStringField,
                          GeoPointField, PointField, PolygonField, BinaryField,
                          ReferenceField, DynamicField, FileField)
+from mongoengine import DynamicDocument
 
 from eve.exceptions import SchemaException
 
@@ -79,6 +81,13 @@ class SchemaMapper(object):
                         treated as lowercase string of classname.
         """
         schema = {}
+
+        # A DynamicDocument in MongoEngine is an expandable / uncontrolled
+        # schema type. Any data set against the DynamicDocument that is not a
+        # pre-defined field is automatically converted to a DynamicField.
+        if issubclass(model_cls, DynamicDocument):
+            schema['allow_unknown'] = True
+
         for field in model_cls._fields.values():
             if field.primary_key:
                 # defined custom primary key -> fail, cos eve doesnt support it
@@ -152,7 +161,6 @@ class SchemaMapper(object):
                 }
 
         elif best_matching_cls is DynamicField:
-            fdict['allow_unknown'] = True
             fdict['type'] = 'dynamic'
 
         return fdict
