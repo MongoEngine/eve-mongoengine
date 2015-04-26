@@ -1,4 +1,3 @@
 eve>=0.5.3
 blinker
 mongoengine>=0.8.7,<=0.9
-pymongo>=2.7.1,<3.0
