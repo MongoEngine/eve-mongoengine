@@ -5,11 +5,10 @@ Eve-MongoEngine
 :Repository: https://github.com/hellerstanislav/eve-mongoengine
 :Author: Stanislav Heller (https://github.com/hellerstanislav)
 
-.. image:: https://api.travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master
-  :target: https://travis-ci.org/hellerstanislav/eve-mongoengine/
-  
-.. image:: https://requires.io/github/hellerstanislav/eve-mongoengine/requirements.png?branch=master
-  :target: https://requires.io/github/hellerstanislav/eve-mongoengine/requirements/?branch=master
+
+.. warning::
+    This branch or related tag is for a legacy version of the extension. Anything released before version 0.1 is considered legacy.
+
 
 About
 =====
