@@ -9,7 +9,8 @@ except:
     pass
 
 # Version Information
-execfile('eve_mongoengine/__version__.py')
+# (Using 'execfile' is not version safe)
+exec(open('eve_mongoengine/__version__.py').read())
 VERSION = get_version()
 
 extra_opts = dict()
