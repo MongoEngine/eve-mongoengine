@@ -14,14 +14,25 @@ Eve-MongoEngine
 .. |travis-develop| image:: https://api.travis-ci.org/seglberg/eve-mongoengine.png?branch=develop
   :target: https://travis-ci.org/seglberg/eve-mongoengine/branches
 
-.. list-table::
-   :widths: 50 50
-   :header-rows: 1
+.. |landscape-master| image:: https://landscape.io/github/seglberg/eve-mongoengine/master/landscape.svg?style=flat
+  :target: https://landscape.io/github/seglberg/eve-mongoengine/master
+  :alt: Code Health
 
-   * - Production
-     - Development
-   * - |travis-master|
-     - |travis-develop|
+.. |landscape-develop| image:: https://landscape.io/github/seglberg/eve-mongoengine/develop/landscape.svg?style=flat
+  :target: https://landscape.io/github/seglberg/eve-mongoengine/develop
+  :alt: Code Health
+
+.. list-table::
+  :widths: 50 50
+  :header-rows: 1
+
+  * - Production
+    - Development
+  * - |travis-master|
+    - |travis-develop|
+  * - |landscape-master|
+    - |landscape-develop|
+
 
 **THE DEVELOP BRANCH CONTAINS POST-LEGACY WORK**
 
