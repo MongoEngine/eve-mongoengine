@@ -71,6 +71,25 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'a': "required field"})
 
+    def test_post_invalid_schema_choice(self):
+        response = self.client.post('/limiteddoc/',
+                                    data='{"a": "hi", "b": "ho", "c": "a"}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
+        json_data = response.get_json()
+        self.assertDictEqual(json_data[config.ISSUES], {'c': 'unallowed value a'})
+        response = self.client.post('/limiteddoc/',
+                                    data='{"a": "hi", "b": "ho", "g": "val4"}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
+        json_data = response.get_json()
+        self.assertDictEqual(json_data[config.ISSUES], {'g': 'unallowed value val4'})
+        response = self.client.post('/limiteddoc/',
+                                    data='{"a": "hi", "b": "ho", "g": "test value 1"}',
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
+        json_data = response.get_json()
+        self.assertDictEqual(json_data[config.ISSUES], {'g': 'unallowed value test value 1'})
 
     def test_post_invalid_schema_unique(self):
         response = self.client.post('/limiteddoc/',
