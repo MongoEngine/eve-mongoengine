@@ -78,7 +78,7 @@ class LimitedDoc(Document):
     f = IntField(min_value=5, max_value=10)
     g = StringField(choices=[
                     ['val1', 'test value 1'],
-                    ['val2', 'test value 2'],
+                    ('val2', 'test value 2'),
                     ['val3', 'test value 3']])
 
 class WrongDoc(Document):
