@@ -49,14 +49,14 @@ class TestHttpPost(BaseTest, unittest.TestCase):
     def test_post_invalid_schema_limits(self):
         # break min_length
         response = self.client.post('/limiteddoc/',
-                                    data='{"a": "hi", "b": "ho", "c": "x", "d": "<10 chars", "e": "<10 chars"}',
+                                    data='{"a": "hi", "b": "ho", "c": "x", "d": "<10 chars", "e": "<10 chars", "g": "val1"}',
                                     content_type='application/json')
         self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
         self.assertDictEqual(json_data[config.ISSUES], {'e': "min length is 10"})
         # break max_length
         response = self.client.post('/limiteddoc/',
-                                    data='{"a": "hi", "b": "ho", "c": "x", "d": "string > 10 chars", "e": "some very long text"}',
+                                    data='{"a": "hi", "b": "ho", "c": "x", "d": "string > 10 chars", "e": "some very long text", "g": "val2"}',
                                     content_type='application/json')
         self.assertEqual(response.status_code, POST_VALIDATION_ERROR_CODE)
         json_data = response.get_json()
