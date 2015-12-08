@@ -240,8 +240,9 @@ def fix_last_updated(sender, document, **kwargs):
     Hook which updates LAST_UPDATED field before every Document.save() call.
     """
     from eve.utils import config
-    field_name = config.LAST_UPDATED.lstrip('_')
-    if field_name in document:
-        document[field_name] = get_utc_time()
+    if config.LAST_UPDATED is not None:
+        field_name = config.LAST_UPDATED.lstrip('_')
+        if field_name in document:
+            document[field_name] = get_utc_time()
 
 mongoengine.signals.pre_save.connect(fix_last_updated)
