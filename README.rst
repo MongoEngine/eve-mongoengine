@@ -4,12 +4,46 @@ Eve-MongoEngine
 :Info: Eve-MongoEngine provides MongoEngine integration with `Eve <http://python-eve.org/>`_.
 :Repository: https://github.com/hellerstanislav/eve-mongoengine
 :Author: Stanislav Heller (https://github.com/hellerstanislav)
+:Maintainer: Matthew Ellison (https://github.com/seglberg)
 
+----
+
+.. |travis-master| image:: https://api.travis-ci.org/seglberg/eve-mongoengine.png?branch=master
+  :target: https://travis-ci.org/seglberg/eve-mongoengine
+
+.. |travis-develop| image:: https://api.travis-ci.org/seglberg/eve-mongoengine.png?branch=develop
+  :target: https://travis-ci.org/seglberg/eve-mongoengine/branches
+
+.. |landscape-master| image:: https://landscape.io/github/seglberg/eve-mongoengine/master/landscape.svg?style=flat
+  :target: https://landscape.io/github/seglberg/eve-mongoengine/master
+  :alt: Code Health
+
+.. |landscape-develop| image:: https://landscape.io/github/seglberg/eve-mongoengine/develop/landscape.svg?style=flat
+  :target: https://landscape.io/github/seglberg/eve-mongoengine/develop
+  :alt: Code Health
+
+.. list-table::
+  :widths: 50 50
+  :header-rows: 1
+
+  * - Production
+    - Development
+  * - |travis-master|
+    - |travis-develop|
+  * - |landscape-master|
+    - |landscape-develop|
+
+
+**THE DEVELOP BRANCH CONTAINS POST-LEGACY WORK**
+
+See the `legacy` tag for the last legacy release (0.0.10).
+
+Do not use `develop` in production code. Instead, the `master` branch always points to the latest production release, and should be used instead.
 
 .. warning::
     This branch or related tag is for a legacy version of the extension. Anything released before version 0.1 is considered legacy.
 
-
+=======
 About
 =====
 
@@ -39,53 +73,8 @@ Optional Dependencies
 
 - *None*
 
-Examples
-========
+Legacy Release
+==============
 
-A simple example of what Eve-MongoEngine code looks like:
-
-.. code:: python
-
-  import mongoengine
-  from eve import Eve
-  from eve_mongoengine import EveMongoengine
-
-  # Example MongoEngine ODM Model
-  class Person(mongoengine.Document):
-      name = mongoengine.StringField()
-      age = mongoengine.IntField()
-
-  # Set up Eve Settings
-  my_settings = {
-      'MONGO_HOST': 'localhost',
-      'MONGO_PORT': 27017,
-      'MONGO_DBNAME': 'eve_mongoengine_test'
-      'DOMAIN': {'eve-mongoengine': {}} # Must add a "Dummy" Domain for Eve
-  }
-
-  # Eve Initialization
-  app = Eve(settings=my_settings)
-  ext = EveMongoengine(app)
-  # Register Models with Eve
-  ext.add_model([Person,])
-  
-  # Start Eve
-  app.run()
-
-
-Validation
-----------
-
-By default, Eve validates against the Cerberus schema. With the Eve-MongoEngine extension, all validation is processed by Eve first (if possible) and then processed by the corresponding MongoEngine validation layer. If the MongoEngine validation layer throws an exception, it is caught and returned in the Cerberus error format.
-
-
-Fields
-------
-
-Eve automatically maintains fields in the database named ``_updated`` and ``_created``. To maintain compatibility with Eve, Eve-MongoEngine automatically inserts MongoEngine fields called ``updated`` and ``created`` (with database names of ``_updated`` and ``_created`` respectively) into any registered models.
-
-
-Options and Limitations
------------------------
-
-See more tuning options and current limitations on `Read the Docs`_.
+The legacy version of the extension can be found under the 'legacy' tag. 
+The legacy version of the extension was released under the BSD-2 license and originally authored by Stanislav Heller. See AUTHORS for more information about the legacy authors and ownership.

@@ -138,7 +138,13 @@ class SchemaMapper(object):
             if field.unique:
                 fdict['unique'] = True
             if field.choices:
-                fdict['allowed'] = field.choices
+                allowed = []
+                for choice in field.choices:
+                    if isinstance(choice, (list, tuple)):
+                        allowed.append(choice[0])
+                    else:
+                        allowed.append(choice)
+                fdict['allowed'] = tuple(allowed)
             if getattr(field, 'max_length', None) is not None:
                 fdict['maxlength'] = field.max_length
             if getattr(field, 'min_length', None) is not None:
