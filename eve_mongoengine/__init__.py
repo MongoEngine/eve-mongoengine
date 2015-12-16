@@ -59,12 +59,12 @@ class EveMongoengine(object):
     #: Default HTTP methods allowed to manipulate with whole resources.
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_resource_methods = ['GET', 'POST', 'DELETE']
+    default_resource_methods = ['GET']
 
     #: Default HTTP methods allowed to manipulate with items (single records).
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_item_methods = ['GET', 'PATCH', 'PUT', 'DELETE']
+    default_item_methods = ['GET']
 
     #: The class used as Eve validator, which is also one of Eve's constructor
     #: params. In EveMongoengine, we need to overwrite it. If extending, assign
