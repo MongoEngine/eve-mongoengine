@@ -46,7 +46,7 @@ About
 
 Eve-MongoEngine is an `Eve`_ extension, which enables MongoEngine ODM  model to be used as an Eve / `Cerberus <https://github.com/nicolaiarocci/cerberus>`_ schema. This eliminates the need to re-write API schemas in the `Cerberus`_ format by using MongoEngine models to automatically export a corresponding Cerberus schema.
 
-Additional documentation and examples can be found on `Read the Docs <http://eve-mongoengine.readthedocs.org/en/latest/>`_.
+Additional documentation and examples can be found on `Read the Docs <https://eve-mongoengine.readthedocs.io/en/latest/>`_.
 
 Installation
 ============
