@@ -91,7 +91,7 @@ class SchemaMapper(object):
         for field in model_cls._fields.values():
             if field.primary_key:
                 # defined custom primary key -> fail, cos eve doesnt support it
-                raise SchemaException("Custom primery key not allowed - eve "
+                raise SchemaException("Custom primary key not allowed - eve "
                                       "does not support different id fields "
                                       "for resources.")
             fname = field.db_field
