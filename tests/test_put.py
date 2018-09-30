@@ -38,7 +38,7 @@ class TestHttpPut(BaseTest, unittest.TestCase):
 
     def test_ifmatch_missing(self):
         response = self.do_put(data='{"a": "greg"}', headers=())
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 428)
 
     def test_put_overwrite_all(self):
         response = self.do_put(data='{"a": "greg", "b": 300}')

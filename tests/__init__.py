@@ -12,6 +12,8 @@ SETTINGS = {
     'MONGO_PORT': 27017,
     'MONGO_DBNAME': 'eve_mongoengine_test',
     'DOMAIN': {'eve-mongoengine': {}},
+    'RESOURCE_METHODS': ['GET', 'POST', 'DELETE'],
+    'ITEM_METHODS': ['GET', 'PATCH', 'PUT']
 }
 
 class Response(BaseResponse):
@@ -134,8 +136,10 @@ class BaseTest(object):
         app = Eve(settings=SETTINGS)
         app.debug = True
         ext = EveMongoengine(app)
-        ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc,
-                       NonStructuredDoc, Inherited, HawkeyDoc])
+        for Doc in SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc, \
+                       NonStructuredDoc, Inherited, HawkeyDoc:
+            ext.add_model(Doc, resource_methods=['GET', 'POST', 'DELETE'], 
+                item_methods=['GET', 'PATCH', 'PUT', 'DELETE'])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app

@@ -26,6 +26,7 @@ class EveMongoengineValidator(Validator):
     Helper validator which adapts mongoengine special-purpose fields
     to cerberus validator API.
     """
+
     def validate(self, document, schema=None, update=False, context=None):
         """
         Main validation method which simply tries to validate against cerberus

@@ -1,4 +1,3 @@
-
 """
     eve_mongoengine
     ~~~~~~~~~~~~~~~
@@ -25,6 +24,7 @@ from ._compat import itervalues, iteritems
 
 
 from .__version__ import get_version
+
 __version__ = get_version()
 
 
@@ -56,15 +56,16 @@ class EveMongoengine(object):
     possible value is either a method param (for IoC-DI) or class attribute,
     which can be overwriten in subclass.
     """
+
     #: Default HTTP methods allowed to manipulate with whole resources.
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_resource_methods = ['GET']
+    default_resource_methods = ["GET"]
 
     #: Default HTTP methods allowed to manipulate with items (single records).
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_item_methods = ['GET']
+    default_item_methods = ["GET"]
 
     #: The class used as Eve validator, which is also one of Eve's constructor
     #: params. In EveMongoengine, we need to overwrite it. If extending, assign
@@ -93,13 +94,13 @@ class EveMongoengine(object):
         # parse app config
         config = self.app.config
         try:
-            self.last_updated = config['LAST_UPDATED']
+            self.last_updated = config["LAST_UPDATED"]
         except KeyError:
-            self.last_updated = '_updated'
+            self.last_updated = "_updated"
         try:
-            self.date_created = config['DATE_CREATED']
+            self.date_created = config["DATE_CREATED"]
         except KeyError:
-            self.date_created = '_created'
+            self.date_created = "_created"
 
     def init_app(self, app):
         """
@@ -123,12 +124,12 @@ class EveMongoengine(object):
         """
         Initializes default settings options for registered model.
         """
-        if 'resource_methods' not in settings:
+        if "resource_methods" not in settings:
             # TODO: maybe get from self.app.supported_resource_methods
-            settings['resource_methods'] = list(self.default_resource_methods)
-        if 'item_methods' not in settings:
+            settings["resource_methods"] = list(self.default_resource_methods)
+        if "item_methods" not in settings:
             # TODO: maybe get from self.app.supported_item_methods
-            settings['item_methods'] = list(self.default_item_methods)
+            settings["item_methods"] = list(self.default_item_methods)
 
     def add_model(self, models, lowercase=True, **settings):
         """
@@ -149,8 +150,10 @@ class EveMongoengine(object):
             models = [models]
         for model_cls in models:
             if not issubclass(model_cls, mongoengine.Document):
-                raise TypeError("Class '%s' is not a subclass of "
-                                "mongoengine.Document." % model_cls.__name__)
+                raise TypeError(
+                    "Class '%s' is not a subclass of "
+                    "mongoengine.Document." % model_cls.__name__
+                )
 
             resource_name = model_cls.__name__
             if lowercase:
@@ -160,17 +163,17 @@ class EveMongoengine(object):
             self.fix_model_class(model_cls)
             self.models[resource_name] = model_cls
 
-            schema = self.schema_mapper_class.create_schema(model_cls,
-                                                            lowercase)
+            schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
             # create resource settings
-            resource_settings = Settings({'schema': schema})
+            resource_settings = Settings({"schema": schema})
             resource_settings.update(settings)
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
             # add sub-resource functionality for every ReferenceField
             subresources = self.schema_mapper_class.get_subresource_settings
-            for registration in subresources(model_cls, resource_name,
-                                             resource_settings, lowercase):
+            for registration in subresources(
+                model_cls, resource_name, resource_settings, lowercase
+            ):
                 self.app.register_resource(*registration)
                 self.models[registration[0]] = model_cls
 
@@ -193,14 +196,16 @@ class EveMongoengine(object):
         date_field_cls = mongoengine.DateTimeField
 
         # field names have to be non-prefixed
-        last_updated_field_name = self.last_updated.lstrip('_')
-        date_created_field_name = self.date_created.lstrip('_')
+        last_updated_field_name = self.last_updated.lstrip("_")
+        date_created_field_name = self.date_created.lstrip("_")
         new_fields = {
             # TODO: updating last_updated field every time when saved
-            last_updated_field_name: date_field_cls(db_field=self.last_updated,
-                                                    default=get_utc_time),
-            date_created_field_name: date_field_cls(db_field=self.date_created,
-                                                    default=get_utc_time)
+            last_updated_field_name: date_field_cls(
+                db_field=self.last_updated, default=get_utc_time
+            ),
+            date_created_field_name: date_field_cls(
+                db_field=self.date_created, default=get_utc_time
+            ),
         }
 
         for attr_name, attr_value in iteritems(new_fields):
@@ -209,9 +214,11 @@ class EveMongoengine(object):
             if attr_name in model_cls._fields:
                 attr_value = model_cls._fields[attr_name]
                 if not isinstance(attr_value, mongoengine.DateTimeField):
-                    info = (attr_name,  attr_value.__class__.__name__)
-                    raise TypeError("Field '%s' is needed by Eve, but has"
-                                    " wrong type '%s'." % info)
+                    info = (attr_name, attr_value.__class__.__name__)
+                    raise TypeError(
+                        "Field '%s' is needed by Eve, but has"
+                        " wrong type '%s'." % info
+                    )
                 continue
             # The way how we introduce new fields into model class is copied
             # out of mongoengine.base.DocumentMetaclass
@@ -244,8 +251,10 @@ def fix_last_updated(sender, document, **kwargs):
     Hook which updates LAST_UPDATED field before every Document.save() call.
     """
     from eve.utils import config
-    field_name = config.LAST_UPDATED.lstrip('_')
+
+    field_name = config.LAST_UPDATED.lstrip("_")
     if field_name in document:
         document[field_name] = get_utc_time()
+
 
 mongoengine.signals.pre_save.connect(fix_last_updated)

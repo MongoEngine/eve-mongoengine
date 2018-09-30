@@ -40,13 +40,14 @@ class TestFields(BaseTest, unittest.TestCase):
         self._fixture_template(data_ok={'a':'http://google.com'},
                                data_fail={'a':'foobar'},
                                msg={'a': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " URL: foobar: ['a'])"})
+                                   " scheme foobar in URL: foobar: "\
+                                   "['a'])"})
 
     def test_email_field(self):
         self._fixture_template(data_ok={'b':'heller.stanislav@gmail.com'},
                                data_fail={'b':'invalid@email'},
                                msg={'b': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " Mail-address: invalid@email: ['b'])"})
+                                   " email address: invalid@email: ['b'])"})
 
     def test_uuid_field(self):
         self._fixture_template(data_ok={'g': 'ddbec64f-3178-43ed-aee3-1455968f24ab'},
