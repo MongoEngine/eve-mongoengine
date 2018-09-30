@@ -65,6 +65,12 @@ def clean_doc(doc):
 
     return doc
 
+def dispatch_meta_properties(doc):
+    extra = {}
+    if hasattr(doc, '_meta_properties'):            
+        for name, func in doc._meta_properties():
+            extra[name] = func()
+    return extra
 
 class PymongoQuerySet(object):
     """
@@ -80,14 +86,9 @@ class PymongoQuerySet(object):
         def iterate(obj):
             qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
-                extra = {}
-                if hasattr(doc, '_meta_properties'):            
-                    extra = doc._meta_properties()
+                extra = dispatch_meta_properties(doc)
                 doc = dict(doc.to_mongo())
-                if extra:
-                    doc["_extra"] = {}
-                    for name, func in extra.items():
-                        doc["_extra"][name] = func()
+                doc['_extra'] = extra
                 for attr, value in iteritems(dict(doc)):
                     if isinstance(value, (list, dict)) and not value:
                         del doc[attr]
@@ -452,14 +453,9 @@ class MongoengineDataLayer(Mongo):
         qry = self._projection(resource, projection, qry)
         try:
             doc = qry.get()
-            extra = {}
-            if hasattr(doc, '_meta_properties'):            
-                extra = doc._meta_properties()
+            extra = dispatch_meta_properties(doc)
             doc = dict(doc.to_mongo())
-            if extra:
-                doc["_extra"] = {}
-                for name, func in extra.items():
-                    doc["_extra"][name] = func()
+            doc["_extra"] = extra
             return clean_doc(doc)
         except DoesNotExist:
             return None
