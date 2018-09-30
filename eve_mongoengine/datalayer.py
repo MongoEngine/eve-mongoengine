@@ -429,9 +429,8 @@ class MongoengineDataLayer(Mongo):
             qry = qry.skip((req.page - 1) * req.max_results)
         return PymongoQuerySet(qry)
 
-    # TODO: check_auth_value and force_auth_field_projection have been added to eve, check them
     def find_one(
-        self, resource, req, check_auth_value=None, force_auth_field_projection=None, **lookup
+        self, resource, req, check_auth_value=True, force_auth_field_projection=False, **lookup
     ):
         """
         Look for one object.
@@ -441,7 +440,9 @@ class MongoengineDataLayer(Mongo):
 
         client_projection = self._client_projection(req)
         datasource, filter_, projection, _ = self._datasource_ex(
-            resource, lookup, client_projection
+            resource, lookup, client_projection, 
+            check_auth_value=check_auth_value,
+            force_auth_field_projection=force_auth_field_projection
         )
         qry = self.cls_map.objects(resource)
 
