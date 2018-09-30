@@ -68,10 +68,9 @@ def clean_doc(doc):
 
     return doc
 
-
 class PymongoQuerySet(object):
     """
-    Dummy mongoenigne-like QuerySet behaving just like queryset
+    Dummy mongoengine-like QuerySet behaving just like queryset
     with as_pymongo() called, but returning ALL fields in subdocuments
     (which as_pymongo() somehow filters).
     """
@@ -82,7 +81,11 @@ class PymongoQuerySet(object):
         def iterate(obj):
             qs = object.__getattribute__(obj, '_qs')
             for doc in qs:
+                extra = doc._meta_properties()
                 doc = dict(doc.to_mongo())
+                doc['_extra'] = {}
+                for name, func in extra.items():
+                    doc['_extra'][name] = func()
                 for attr, value in iteritems(dict(doc)):
                     if isinstance(value, (list, dict)) and not value:
                         del doc[attr]
@@ -435,7 +438,12 @@ class MongoengineDataLayer(Mongo):
 
         qry = self._projection(resource, projection, qry)
         try:
-            doc = dict(qry.get().to_mongo())
+            doc = qry.get()
+            extra = doc._meta_properties()
+            doc = dict(doc.to_mongo())
+            doc['_extra'] = {}
+            for name, func in extra.items():
+                doc['_extra'][name] = func()
             return clean_doc(doc)
         except DoesNotExist:
             return None
@@ -453,7 +461,7 @@ class MongoengineDataLayer(Mongo):
         translate = lambda x: cls._reverse_db_field_map.get(x, x)
         doc = {translate(k): doc[k] for k in doc}
 
-        # MongoEngine 0.9 now throws an FieldDoesNotExist when initializing a
+        # MongoEngine 0.9 now throws a FieldDoesNotExist when initializing a
         # Document with unknown keys.
         if MONGOENGINE_VERSION >= LooseVersion("0.9.0"):
             from mongoengine import FieldDoesNotExist
