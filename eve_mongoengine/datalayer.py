@@ -67,8 +67,9 @@ def clean_doc(doc):
 
 def dispatch_meta_properties(doc):
     extra = {}
-    if hasattr(doc, '_meta_properties'):            
-        for name, func in doc._meta_properties():
+    if hasattr(doc, '_meta_properties'):
+        meta_properties = doc._meta_properties()
+        for name, func in meta_properties.items():
             extra[name] = func()
     return extra
 
@@ -580,6 +581,11 @@ class MongoengineDataLayer(Mongo):
         except Exception as exc:
             self._handle_exception(exc)
 
+    # FIXME: DELETE can be called document- or collection-wise, in the second case
+    #        it is meant to drop the whole collection. Currently a document-level
+    #        permission checking is performed but possibly a different check should
+    #        be made for collection-wise deletion (e.g., role-based on the resource)
+    #        the `for doc in qry:` loop should be changed in this latter case
     def remove(self, resource, lookup):
         """Called when performing DELETE request."""
         lookup = self._mongotize(lookup, resource)
