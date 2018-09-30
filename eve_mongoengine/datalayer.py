@@ -72,6 +72,11 @@ def dispatch_meta_properties(doc):
             extra[name] = func()
     return extra
 
+def check_permissions(doc, method):
+    if hasattr(doc, '_check_permissions'):
+        return doc._check_permissions(method)
+    return True
+
 class PymongoQuerySet(object):
     """
     Dummy mongoengine-like QuerySet behaving just like queryset
@@ -87,6 +92,7 @@ class PymongoQuerySet(object):
             qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
                 extra = dispatch_meta_properties(doc)
+                check_permissions(doc, 'GET')
                 doc = dict(doc.to_mongo())
                 doc['_extra'] = extra
                 for attr, value in iteritems(dict(doc)):
@@ -131,7 +137,7 @@ class ResourceClassMap(object):
 
     def objects(self, resource):
         """
-        Returns QuerySet instance of resource's class thourh mongoengine
+        Returns QuerySet instance of resource's class though mongoengine
         QuerySetManager. If there is some different queryset_manager
         defined in the MongoengineDataLayer class, it tries to use that one
         first.
@@ -214,6 +220,8 @@ class MongoengineUpdater(object):
         kwargs = self._transform_updates_to_mongoengine_kwargs(resource, updates)
         qset = lambda: self.datalayer.cls_map.objects(resource)
         qry = qset()(id=id_)
+        for doc in qry:
+            check_permissions(doc, 'PATCH')
         qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
         if self._has_empty_list(updates):
             # Fix Etag when updating to empty list
@@ -239,6 +247,7 @@ class MongoengineUpdater(object):
         """
         model = self.datalayer.cls_map.objects(resource)(id=id_).get()
         self._update_document(model, updates)
+        check_permissions(model, 'PATCH')
         model.save(write_concern=self.datalayer._wc(resource))
         # Fix Etag when updating to empty list
         self._etag_doc = dict(model.to_mongo())
@@ -247,7 +256,7 @@ class MongoengineUpdater(object):
         """
         Resolves update for PATCH request.
 
-        Does not handle mongo errros!
+        Does not handle mongo errors!
         """
         opt = self.datalayer.mongoengine_options
 
@@ -454,6 +463,7 @@ class MongoengineDataLayer(Mongo):
         try:
             doc = qry.get()
             extra = dispatch_meta_properties(doc)
+            check_permissions(doc, 'GET')
             doc = dict(doc.to_mongo())
             doc["_extra"] = extra
             return clean_doc(doc)
@@ -514,6 +524,7 @@ class MongoengineDataLayer(Mongo):
             ids = []
             for doc in doc_or_docs:
                 model = self._doc_to_model(resource, doc)
+                check_permissions(model, 'POST')
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
@@ -556,6 +567,7 @@ class MongoengineDataLayer(Mongo):
         try:
             # FIXME: filters?
             model = self._doc_to_model(resource, document)
+            check_permissions(model, 'PUT')
             model.save(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -578,6 +590,9 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
+            # Permission checking is mandatory
+            for doc in qry:
+                check_permissions(doc, 'DELETE')
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
