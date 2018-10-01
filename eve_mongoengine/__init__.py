@@ -21,6 +21,9 @@ from .datalayer import MongoengineDataLayer
 from .struct import Settings
 from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
+from mongoengine import signals
+from eve.utils import document_etag
+import functools
 
 
 from .__version__ import get_version
@@ -30,11 +33,10 @@ __version__ = get_version()
 
 def get_utc_time():
     """
-    Returns current datetime in system-wide UTC format wichout microsecond
+    Returns current datetime in system-wide UTC format without microsecond
     part.
     """
     return datetime.utcnow().replace(microsecond=0)
-
 
 class EveMongoengine(object):
     """
@@ -93,14 +95,9 @@ class EveMongoengine(object):
     def _parse_config(self):
         # parse app config
         config = self.app.config
-        try:
-            self.last_updated = config["LAST_UPDATED"]
-        except KeyError:
-            self.last_updated = "_updated"
-        try:
-            self.date_created = config["DATE_CREATED"]
-        except KeyError:
-            self.date_created = "_created"
+        self.last_updated = config.get("LAST_UPDATED", '_updated')
+        self.date_created = config.get("DATE_CREATED", '_created')
+        self.etag = config.get("ETAG", '_etag')
 
     def init_app(self, app):
         """
@@ -119,6 +116,18 @@ class EveMongoengine(object):
         self._parse_config()
         # overwrite default data layer to get proper mongoengine functionality
         app.data = self.datalayer_class(self)
+        
+        signals.pre_save_post_validation.connect(functools.partialmethod(self.update_document_etag))
+        signals.pre_bulk_insert.connect(functools.partialmethod(self.update_documents_etag))
+
+    # FIXME: currently etag_ignore_fields are ignored and the whole document is considered
+    #        at some point this has to be fixed
+    def update_document_etag(self, sender, document, **kwargs):        
+        document.etag = document_etag(document.to_json(), ignore_fields=['_created', '_updated'])
+
+    def update_documents_etag(self, sender, documents, **kwargs):
+        for document in documents:
+            document.etag = document_etag(document.to_json(), ignore_fields=['_created', '_updated'])            
 
     def _set_default_settings(self, settings):
         """
@@ -181,11 +190,11 @@ class EveMongoengine(object):
         """
         Internal method invoked during registering new model.
 
-        Adds necessary fields (updated and created) into model class
+        Adds necessary fields (updated, created and etag) into model class
         to ensure Eve's default functionality.
 
         This is a helper for correct manipulation with mongoengine documents
-        within Eve. Eve needs 'updated' and 'created' fields for it's own
+        within Eve. Eve needs 'updated', 'created' and 'etag' fields for it's own
         purpose, but we cannot ensure that they are present in the model
         class. And even if they are, they may be of other field type or
         missbehave.
@@ -194,10 +203,12 @@ class EveMongoengine(object):
                           :class:`mongoengine.Document`) to be fixed up.
         """
         date_field_cls = mongoengine.DateTimeField
+        etag_field_cls = mongoengine.StringField
 
         # field names have to be non-prefixed
         last_updated_field_name = self.last_updated.lstrip("_")
         date_created_field_name = self.date_created.lstrip("_")
+        etag_field_name = self.etag.lstrip("_")
         new_fields = {
             # TODO: updating last_updated field every time when saved
             last_updated_field_name: date_field_cls(
@@ -206,6 +217,14 @@ class EveMongoengine(object):
             date_created_field_name: date_field_cls(
                 db_field=self.date_created, default=get_utc_time
             ),
+            etag_field_name: etag_field_cls(
+                db_field=self.etag
+            )
+        }
+        correct_field_types = { 
+            last_updated_field_name: date_field_cls,
+            date_created_field_name: date_field_cls,
+            etag_field_name: etag_field_cls
         }
 
         for attr_name, attr_value in iteritems(new_fields):
@@ -213,7 +232,7 @@ class EveMongoengine(object):
             # type (mongoengine.DateTimeField) and pass
             if attr_name in model_cls._fields:
                 attr_value = model_cls._fields[attr_name]
-                if not isinstance(attr_value, mongoengine.DateTimeField):
+                if not isinstance(attr_value, correct_field_types[attr_name]):
                     info = (attr_name, attr_value.__class__.__name__)
                     raise TypeError(
                         "Field '%s' is needed by Eve, but has"
@@ -239,7 +258,7 @@ class EveMongoengine(object):
             model_cls._db_field_map[attr_name] = attr_value.db_field
             model_cls._reverse_db_field_map[attr_value.db_field] = attr_name
 
-            # this is just copied from mongoengine and frankly, i just dont
+            # this is just copied from mongoengine and frankly, i just don't
             # have a clue, what it does...
             iterfields = itervalues(model_cls._fields)
             created = [(v.creation_counter, v.name) for v in iterfields]

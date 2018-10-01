@@ -37,7 +37,6 @@ from werkzeug.exceptions import HTTPException
 from flask import abort, current_app as app
 import pymongo
 
-
 # Python3 compatibility
 from ._compat import iteritems
 
@@ -61,7 +60,8 @@ def clean_doc(doc):
     for attr, value in iteritems(dict(doc)):
         if isinstance(value, (list, dict)) and not value:
             del doc[attr]
-    doc.pop("_etag", None)
+    # DONE: possibly handled by eve
+    #doc.pop("_etag", None)
 
     return doc
 
@@ -171,16 +171,18 @@ class MongoengineUpdater(object):
         Fixes ETag value returned by PATCH responses.
         """
 
+        # DONE: possibly this is not needed anymore since eve stores _etag in DB
         def fix_patch_etag(resource, request, payload):
-            if self._etag_doc is None:
-                return
-            # make doc from which the etag will be computed
-            etag_doc = clean_doc(self._etag_doc)
-            # load the response back agagin from json
-            d = json.loads(payload.get_data(as_text=True))
-            # compute new etag
-            d[config.ETAG] = document_etag(etag_doc)
-            payload.set_data(json.dumps(d))
+            return
+            # if self._etag_doc is None:
+            #     return
+            # # make doc from which the etag will be computed
+            # etag_doc = clean_doc(self._etag_doc)
+            # # load the response back agagin from json
+            # d = json.loads(payload.get_data(as_text=True))
+            # # compute new etag
+            # d[config.ETAG] = document_etag(etag_doc)
+            # payload.set_data(json.dumps(d))
 
         # register post PATCH hook into current application
         self.datalayer.app.on_post_PATCH += fix_patch_etag
@@ -224,12 +226,13 @@ class MongoengineUpdater(object):
         for doc in qry:
             check_permissions(doc, 'PATCH')
         qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
-        if self._has_empty_list(updates):
-            # Fix Etag when updating to empty list
-            model = qset()(id=id_).get()
-            self._etag_doc = dict(model.to_mongo())
-        else:
-            self._etag_doc = None
+        # DONE: possibly is not needed because eve stores _etag in db
+        # if self._has_empty_list(updates):
+        #     # Fix Etag when updating to empty list
+        #     model = qset()(id=id_).get()
+        #     self._etag_doc = dict(model.to_mongo())
+        # else:
+        #     self._etag_doc = None
 
     def _update_document(self, doc, updates):
         """
@@ -251,7 +254,8 @@ class MongoengineUpdater(object):
         check_permissions(model, 'PATCH')
         model.save(write_concern=self.datalayer._wc(resource))
         # Fix Etag when updating to empty list
-        self._etag_doc = dict(model.to_mongo())
+        # DONE: possibly is not needed because eve stores _etag in DB
+        #self._etag_doc = dict(model.to_mongo())
 
     def update(self, resource, id_, updates):
         """
@@ -261,13 +265,13 @@ class MongoengineUpdater(object):
         """
         opt = self.datalayer.mongoengine_options
 
-        updates.pop("_etag", None)
+        #updates.pop("_etag", None)
 
         if opt.get("use_atomic_update_for_patch", 1):
             self._update_using_update_one(resource, id_, updates)
         else:
             self._update_using_save(resource, id_, updates)
-        return self._etag_doc
+        return updates["_etag"] #self._etag_doc
 
 
 class MongoengineDataLayer(Mongo):
@@ -532,8 +536,9 @@ class MongoengineDataLayer(Mongo):
                 doc[config.ID_FIELD] = model.id
                 # Recompute ETag since MongoEngine can modify the data via
                 # save hooks.
-                clean_doc(doc)
-                doc["_etag"] = document_etag(doc)
+                # DONE: possibly this is not needed anymore, since eve stores _etag in db
+                # clean_doc(doc)
+                # doc["_etag"] = document_etag(doc)
             return ids
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an

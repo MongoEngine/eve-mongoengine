@@ -93,6 +93,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         expected = dict(raw)
         expected['a'] = 'greg'
         real = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
+        del real['_etag']
+        del expected['_etag']
         self.assertDictEqual(real, expected)
         # test if GET response returns corrent response
         response = self.client.get(self.url).get_json()
