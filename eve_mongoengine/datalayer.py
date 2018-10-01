@@ -34,7 +34,7 @@ from eve.exceptions import ConfigException
 
 # Misc
 from werkzeug.exceptions import HTTPException
-from flask import abort
+from flask import abort, current_app as app
 import pymongo
 
 
@@ -95,7 +95,7 @@ class PymongoQuerySet(object):
                 extra = dispatch_meta_properties(doc)
                 check_permissions(doc, 'GET')
                 doc = dict(doc.to_mongo())
-                doc['_extra'] = extra
+                doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
                 for attr, value in iteritems(dict(doc)):
                     if isinstance(value, (list, dict)) and not value:
                         del doc[attr]
@@ -466,7 +466,7 @@ class MongoengineDataLayer(Mongo):
             extra = dispatch_meta_properties(doc)
             check_permissions(doc, 'GET')
             doc = dict(doc.to_mongo())
-            doc["_extra"] = extra
+            doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
             return clean_doc(doc)
         except DoesNotExist:
             return None
