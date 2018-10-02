@@ -22,9 +22,8 @@ from .struct import Settings
 from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
 from mongoengine import signals
-from eve.utils import document_etag
-import functools
-
+import json
+import hashlib
 
 from .__version__ import get_version
 
@@ -37,6 +36,35 @@ def get_utc_time():
     part.
     """
     return datetime.utcnow().replace(microsecond=0)
+
+def document_etag(value, ignore_fields=None):
+    """Taken verbatim from eve"""
+    if not isinstance(value, dict):
+        value = json.loads(value)
+    if ignore_fields:
+        def filter_ignore_fields(d, fields):
+            # recursive function to remove the fields that they are in d,
+            # field is a list of fields to skip or dotted fields to look up
+            # to nested keys such as  ["foo", "dict.bar", "dict.joe"]
+            for field in fields:
+                key, _, value = field.partition(".")
+                if value:
+                    filter_ignore_fields(d[key], [value])
+                elif field in d:
+                    d.pop(field)
+                else:
+                    # not required fields can be not present
+                    pass
+        value_ = value
+        filter_ignore_fields(value_, ignore_fields)
+    else:
+        value_ = value
+
+    h = hashlib.sha1()
+    h.update(
+        json.dumps(value_, sort_keys=True).encode("utf-8")
+    )
+    return h.hexdigest()
 
 class EveMongoengine(object):
     """
@@ -117,18 +145,6 @@ class EveMongoengine(object):
         # overwrite default data layer to get proper mongoengine functionality
         app.data = self.datalayer_class(self)
         
-        signals.pre_save_post_validation.connect(functools.partialmethod(self.update_document_etag))
-        signals.pre_bulk_insert.connect(functools.partialmethod(self.update_documents_etag))
-
-    # FIXME: currently etag_ignore_fields are ignored and the whole document is considered
-    #        at some point this has to be fixed
-    def update_document_etag(self, sender, document, **kwargs):        
-        document.etag = document_etag(document.to_json(), ignore_fields=['_created', '_updated'])
-
-    def update_documents_etag(self, sender, documents, **kwargs):
-        for document in documents:
-            document.etag = document_etag(document.to_json(), ignore_fields=['_created', '_updated'])            
-
     def _set_default_settings(self, settings):
         """
         Initializes default settings options for registered model.
@@ -139,6 +155,26 @@ class EveMongoengine(object):
         if "item_methods" not in settings:
             # TODO: maybe get from self.app.supported_item_methods
             settings["item_methods"] = list(self.default_item_methods)
+
+    @staticmethod
+    def _fix_fields(sender, document, **kwargs):
+        """
+        Hook which updates LAST_UPDATED field before every Document.save() call.
+        """
+        from eve.utils import config
+
+        doc = json.loads(document.to_json())
+        for field in config.ETAG, config.LAST_UPDATED, config.DATE_CREATED,'_cls', 'id':
+            if field in doc:
+                doc.pop(field)               
+        document[config.ETAG.lstrip("_")] = document_etag(doc)
+    
+        now = datetime.utcnow() #get_utc_time()        
+        document[config.LAST_UPDATED.lstrip("_")] = now
+        print(kwargs)
+        if 'created' in kwargs and kwargs['created']:
+            document[config.DATE_CREATED.lstrip("_")] = now
+        print(document.to_json())
 
     def add_model(self, models, lowercase=True, **settings):
         """
@@ -170,11 +206,12 @@ class EveMongoengine(object):
 
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
+            mongoengine.signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
             self.models[resource_name] = model_cls
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
             # create resource settings
-            resource_settings = Settings({"schema": schema})
+            resource_settings = Settings({ "schema": schema })
             resource_settings.update(settings)
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
@@ -264,16 +301,3 @@ class EveMongoengine(object):
             created = [(v.creation_counter, v.name) for v in iterfields]
             model_cls._fields_ordered = tuple(i[1] for i in sorted(created))
 
-
-def fix_last_updated(sender, document, **kwargs):
-    """
-    Hook which updates LAST_UPDATED field before every Document.save() call.
-    """
-    from eve.utils import config
-
-    field_name = config.LAST_UPDATED.lstrip("_")
-    if field_name in document:
-        document[field_name] = get_utc_time()
-
-
-mongoengine.signals.pre_save.connect(fix_last_updated)

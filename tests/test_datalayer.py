@@ -2,9 +2,11 @@
 from datetime import datetime
 import unittest
 import json
+import time
 
 from eve.utils import str_to_date, config
 from eve_mongoengine import EveMongoengine
+from mongoengine import ValidationError
 
 from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc, WrongDoc, SETTINGS
 
@@ -52,21 +54,16 @@ class TestDataLayer(unittest.TestCase):
         app = self.create_app(SimpleDoc)
         doc = SimpleDoc(a='a', b=42)
         doc.save()
+        print("DOC:", doc.to_json())
+        etag = doc[self._etag.lstrip("_")]
         doc.b = 12
         doc.save()
+        print("DOC2:", doc.to_json())
         data = json.loads(doc.to_json())
         self.assertEqual(data['b'], 12)
         self.assertNotEqual(data[self._created], data[self._updated])
-        doc.delete()
+        self.assertNotEqual(etag, data[self._etag])
 
-    def test_created_and_updated_do_not_match_after_update_one(self):
-        app = self.create_app(SimpleDoc)
-        doc = SimpleDoc(a='a', b=42)
-        doc.save()
-        self.assertEqual(SimpleDoc.objects(a='a').update_one(b=12), 1)
-        data = json.loads(SimpleDoc.objects.get(a='a').to_json())
-        self.assertEqual(data['b'], 12)
-        self.assertNotEqual(data[self._created], data[self._updated])
         doc.delete()
 
 
