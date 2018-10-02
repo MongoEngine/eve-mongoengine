@@ -21,7 +21,7 @@ class TestMongoengineFix(unittest.TestCase):
         ext.add_model(models)
         return app.test_client()
 
-    def assertDateTimeAlmostEqual(self, d1, d2, precission='minute'):
+    def assertDateTimeAlmostEqual(self, d1, d2, precision='minute'):
         """
         Used for testing datetime, which cannot (or we do not want to) be
         injected into tested object. Omits second and microsecond part.
