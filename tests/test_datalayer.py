@@ -21,7 +21,7 @@ class TestDataLayer(BaseTest, unittest.TestCase):
         for model in SimpleDoc, ComplexDoc, LimitedDoc:
             model.drop_collection()
 
-    # TODO: create meta-tests with all document types
+    # TODO: create meta-tests with all document types 
 
     @in_app_context
     def test_extra_fields_are_in_db(self):
@@ -54,6 +54,7 @@ class TestDataLayer(BaseTest, unittest.TestCase):
         self.assertNotEqual(data[self._created], data[self._updated])
         self.assertNotEqual(etag, data[self._etag])
         doc.delete()
+
 
 
   

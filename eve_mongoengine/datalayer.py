@@ -197,24 +197,20 @@ class MongoengineUpdater(object):
             field = doc._fields[field_name]
             doc[field_name] = field.to_python(value)
         return doc
-
-    def _update_using_save(self, resource, id_, updates):
-        """
-        Updates one document non-atomically using Document.save().
-        """
-        model = self.datalayer.cls_map.objects(resource)(id=id_).get()
-        check_permissions(model, 'PATCH')
-        self._update_document(model, updates)
-        model.save(write_concern=self.datalayer._wc(resource))
-        return model.etag
-
+      
     def update(self, resource, id_, updates):
         """
         Resolves update for PATCH request.
 
         Does not handle mongo errors!
         """
-        return self._update_using_save(resource, id_, updates)
+        model = self.datalayer.cls_map.objects(resource)(id=id_).get()
+        etag = model.etag
+        check_permissions(model, 'PATCH')
+        self._update_document(model, updates)     
+        # This will ensure atomicity or will raise an exception
+        model.save(write_concern=self.datalayer._wc(resource), save_condition={ "etag": etag })
+        return model.etag
 
 
 class MongoengineDataLayer(Mongo):

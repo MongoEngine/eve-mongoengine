@@ -136,7 +136,6 @@ class EveMongoengine(object):
         document[eve_fields['updated']] = now
         if 'created' in kwargs and kwargs['created']:
             document[eve_fields['created']] = now
-        print("In Fix Fields", document.to_json())
 
     def add_model(self, models, lowercase=True, **settings):
         """

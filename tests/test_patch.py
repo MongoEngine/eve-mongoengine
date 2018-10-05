@@ -243,7 +243,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     def test_update_date_consistency(self):
         # tests if _updated is really updated when PATCHing resource
         updated = self.client.get(self.url).get_json()[config.LAST_UPDATED]
-        time.sleep(1)
+        time.sleep(1) # needed because of time granularity used
         s = SimpleDoc.objects.get()
         updated_before_patch = s.updated
         s.a = "bob"
@@ -252,3 +252,5 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertNotEqual(updated_before_patch, updated_after_patch)
         delta = updated_after_patch - updated_before_patch
         self.assertGreater(delta.seconds, 0)
+
+
