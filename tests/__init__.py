@@ -4,6 +4,7 @@ from flask import Response as BaseResponse
 from mongoengine import *
 import mongoengine.signals
 from eve import Eve
+from functools import wraps
 
 from eve_mongoengine import EveMongoengine
 
@@ -149,3 +150,9 @@ class BaseTest(object):
         # deletes the whole test database
         cls.app.data.conn.drop_database(SETTINGS['MONGO_DBNAME'])
 
+def in_app_context(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        with self.app.app_context():
+            return fn(self, *args, **kwargs)
+    return wrapper

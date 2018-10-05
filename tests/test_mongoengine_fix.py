@@ -9,7 +9,6 @@ from eve.utils import str_to_date, config
 from eve_mongoengine import EveMongoengine
 
 from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc, WrongDoc, SETTINGS
-
 class TestMongoengineFix(unittest.TestCase):
     """
     Test fixing mongoengine classes for Eve's purposes.
@@ -19,7 +18,7 @@ class TestMongoengineFix(unittest.TestCase):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model(models)
-        return app.test_client()
+        return app
 
     def assertDateTimeAlmostEqual(self, d1, d2, precision='minute'):
         """
@@ -35,22 +34,24 @@ class TestMongoengineFix(unittest.TestCase):
     def _test_default_values(self, app, cls, updated_name='updated',
                              created_name='created'):
         # test updated and created fields if they are correctly generated
-        now = datetime.utcnow()
-        d = cls(a="xyz", b=29)
-        updated = getattr(d, updated_name)
-        created = getattr(d, created_name)
-        self.assertEqual(type(updated), datetime)
-        self.assertEqual(type(created), datetime)
-        self.assertDateTimeAlmostEqual(updated, now)
-        self.assertDateTimeAlmostEqual(created, now)
-        d.save()
-        # test real returned values
-        json_data = app.get('/simpledoc/').get_json()
-        created_attr = app.application.config['DATE_CREATED']
-        created_str = json_data[config.ITEMS][0][created_attr]
-        date_created = str_to_date(created_str)
-        self.assertDateTimeAlmostEqual(now, date_created)
-        d.delete()
+        with app.app_context():
+            client = app.test_client()
+            now = datetime.utcnow()
+            d = cls(a="xyz", b=29)
+            updated = getattr(d, updated_name)
+            created = getattr(d, created_name)
+            self.assertEqual(type(updated), datetime)
+            self.assertEqual(type(created), datetime)
+            self.assertDateTimeAlmostEqual(updated, now)
+            self.assertDateTimeAlmostEqual(created, now)
+            d.save()
+            # test real returned values
+            json_data = client.get('/simpledoc/').get_json()
+            created_attr = app.config['DATE_CREATED']
+            created_str = json_data[config.ITEMS][0][created_attr]
+            date_created = str_to_date(created_str)
+            self.assertDateTimeAlmostEqual(now, date_created)
+            d.delete()
 
     def test_default_values(self):
         app = self.create_app(SimpleDoc)
@@ -75,9 +76,7 @@ class TestMongoengineFix(unittest.TestCase):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model(SimpleDoc)
-        client = app.test_client()
-        with app.app_context(): # to get current app's config
-            self._test_default_values(client, SimpleDoc, updated_name='last_change')
+        self._test_default_values(app, SimpleDoc, updated_name='last_change')
 
     def test_nondefault_date_created_field(self):
         # redefine to get entirely new class
@@ -90,5 +89,4 @@ class TestMongoengineFix(unittest.TestCase):
         app.debug = True
         ext = EveMongoengine(app)
         ext.add_model(SimpleDoc)
-        app = app.test_client()
         self._test_default_values(app, SimpleDoc, created_name='created_at')

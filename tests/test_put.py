@@ -2,7 +2,7 @@
 import json
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc, ComplexDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, in_app_context
 
 class TestHttpPut(BaseTest, unittest.TestCase):
     def setUp(self):
@@ -56,6 +56,7 @@ class TestHttpPut(BaseTest, unittest.TestCase):
         self.assertEqual(response['a'], "greg")
         self.assertNotIn('b', response)
 
+    @in_app_context
     def test_put_subresource(self):
         # create new resource and subresource
         s = SimpleDoc(a="Answer to everything", b=42).save()

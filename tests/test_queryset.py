@@ -3,7 +3,7 @@ import unittest
 from mongoengine import Document, StringField, queryset_manager
 
 from eve_mongoengine import EveMongoengine
-from tests import Eve, SETTINGS
+from tests import Eve, SETTINGS, in_app_context
 
 
 class TwoFaceDoc(Document):
@@ -28,6 +28,7 @@ class TestMongoengineFix(unittest.TestCase):
         cls.app = app
         cls.client = app.test_client()
 
+    @in_app_context
     def test_switch_queryset(self):
         t1 = TwoFaceDoc(s='x').save()
         t2 = TwoFaceDoc(s='a').save()

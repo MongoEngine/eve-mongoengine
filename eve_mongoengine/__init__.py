@@ -12,8 +12,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
-
 import mongoengine
 
 from .schema import SchemaMapper
@@ -21,50 +19,17 @@ from .datalayer import MongoengineDataLayer
 from .struct import Settings
 from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
+from .utils import clean_doc, remove_eve_mongoengine_fields, get_utc_time, fix_underscore
 from mongoengine import signals
 import json
 import hashlib
+from flask import current_app
+from eve.methods.common import resolve_document_etag
+from eve.utils import config
 
 from .__version__ import get_version
 
 __version__ = get_version()
-
-
-def get_utc_time():
-    """
-    Returns current datetime in system-wide UTC format without microsecond
-    part.
-    """
-    return datetime.utcnow().replace(microsecond=0)
-
-def document_etag(value, ignore_fields=None):
-    """Taken verbatim from eve"""
-    if not isinstance(value, dict):
-        value = json.loads(value)
-    if ignore_fields:
-        def filter_ignore_fields(d, fields):
-            # recursive function to remove the fields that they are in d,
-            # field is a list of fields to skip or dotted fields to look up
-            # to nested keys such as  ["foo", "dict.bar", "dict.joe"]
-            for field in fields:
-                key, _, value = field.partition(".")
-                if value:
-                    filter_ignore_fields(d[key], [value])
-                elif field in d:
-                    d.pop(field)
-                else:
-                    # not required fields can be not present
-                    pass
-        value_ = value
-        filter_ignore_fields(value_, ignore_fields)
-    else:
-        value_ = value
-
-    h = hashlib.sha1()
-    h.update(
-        json.dumps(value_, sort_keys=True).encode("utf-8")
-    )
-    return h.hexdigest()
 
 class EveMongoengine(object):
     """
@@ -84,7 +49,7 @@ class EveMongoengine(object):
 
     This class tries hard to be extendable and hackable as possible, every
     possible value is either a method param (for IoC-DI) or class attribute,
-    which can be overwriten in subclass.
+    which can be overwritten in subclass.
     """
 
     #: Default HTTP methods allowed to manipulate with whole resources.
@@ -122,10 +87,9 @@ class EveMongoengine(object):
 
     def _parse_config(self):
         # parse app config
-        config = self.app.config
-        self.last_updated = config.get("LAST_UPDATED", '_updated')
-        self.date_created = config.get("DATE_CREATED", '_created')
-        self.etag = config.get("ETAG", '_etag')
+        self.last_updated = self.app.config.get("LAST_UPDATED", "_updated") or config.LAST_UPDATED
+        self.date_created = self.app.config.get("DATE_CREATED", "_created") or config.DATE_CREATED
+        self.etag = self.app.config.get("ETAG", "_etag") or config.ETAG
 
     def init_app(self, app):
         """
@@ -159,22 +123,20 @@ class EveMongoengine(object):
     @staticmethod
     def _fix_fields(sender, document, **kwargs):
         """
-        Hook which updates LAST_UPDATED field before every Document.save() call.
+        Hook which updates all eve fields before every Document.save() call.
         """
-        from eve.utils import config
-
+        eve_fields = document._eve_fields
         doc = json.loads(document.to_json())
-        for field in config.ETAG, config.LAST_UPDATED, config.DATE_CREATED,'_cls', 'id':
-            if field in doc:
-                doc.pop(field)               
-        document[config.ETAG.lstrip("_")] = document_etag(doc)
+        remove_eve_mongoengine_fields(doc, eve_fields.values())
+           
+        resolve_document_etag(doc, sender._eve_resource)    
+        document[eve_fields['etag']] = doc[config.ETAG]
     
-        now = datetime.utcnow() #get_utc_time()        
-        document[config.LAST_UPDATED.lstrip("_")] = now
-        print(kwargs)
+        now = get_utc_time()        
+        document[eve_fields['updated']] = now
         if 'created' in kwargs and kwargs['created']:
-            document[config.DATE_CREATED.lstrip("_")] = now
-        print(document.to_json())
+            document[eve_fields['created']] = now
+        print("In Fix Fields", document.to_json())
 
     def add_model(self, models, lowercase=True, **settings):
         """
@@ -211,7 +173,12 @@ class EveMongoengine(object):
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
             # create resource settings
-            resource_settings = Settings({ "schema": schema })
+            # FIXME: probably the ETAG should be crated considering also dates
+            resource_settings = Settings({ 
+                "schema": schema, 
+                "etag_ignore_fields": [config.DATE_CREATED, config.LAST_UPDATED, config.ETAG, '_id', '_cls'] 
+#                "etag_ignore_fields": [config.ETAG, '_id'] 
+            })
             resource_settings.update(settings)
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
@@ -222,6 +189,7 @@ class EveMongoengine(object):
             ):
                 self.app.register_resource(*registration)
                 self.models[registration[0]] = model_cls
+            model_cls._eve_resource = resource_name
 
     def fix_model_class(self, model_cls):
         """
@@ -242,10 +210,15 @@ class EveMongoengine(object):
         date_field_cls = mongoengine.DateTimeField
         etag_field_cls = mongoengine.StringField
 
+        # TODO: maybe yes, instead
         # field names have to be non-prefixed
-        last_updated_field_name = self.last_updated.lstrip("_")
-        date_created_field_name = self.date_created.lstrip("_")
-        etag_field_name = self.etag.lstrip("_")
+        last_updated_field_name = fix_underscore(self.last_updated)
+        date_created_field_name = fix_underscore(self.date_created)
+        etag_field_name = fix_underscore(self.etag)
+        model_cls._eve_fields = { 'updated': last_updated_field_name, 
+            'created': date_created_field_name, 
+            'etag': etag_field_name }
+
         new_fields = {
             # TODO: updating last_updated field every time when saved
             last_updated_field_name: date_field_cls(

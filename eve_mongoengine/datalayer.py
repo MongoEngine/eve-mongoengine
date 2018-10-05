@@ -16,6 +16,7 @@ import json
 from uuid import UUID
 import traceback
 from distutils.version import LooseVersion
+from .utils import clean_doc
 
 # --- Third Party ---
 
@@ -29,7 +30,7 @@ MONGOENGINE_VERSION = LooseVersion(__version__)
 # Eve
 from eve.io.mongo import Mongo, MongoJSONEncoder
 from eve.io.mongo.parser import parse, ParseError
-from eve.utils import config, debug_error_message, validate_filters, document_etag
+from eve.utils import config, debug_error_message, validate_filters
 from eve.exceptions import ConfigException
 
 # Misc
@@ -39,6 +40,7 @@ import pymongo
 
 # Python3 compatibility
 from ._compat import iteritems
+from .utils import remove_eve_mongoengine_fields
 
 
 def _itemize(maybe_dict):
@@ -49,21 +51,6 @@ def _itemize(maybe_dict):
     else:
         raise TypeError("Wrong type to itemize. Allowed lists and dicts.")
 
-
-def clean_doc(doc):
-    """
-    Cleans empty datastructures from mongoengine document (model instance)
-    and remove any _etag fields.
-
-    The purpose of this is to get proper etag.
-    """
-    for attr, value in iteritems(dict(doc)):
-        if isinstance(value, (list, dict)) and not value:
-            del doc[attr]
-    # DONE: possibly handled by eve
-    #doc.pop("_etag", None)
-
-    return doc
 
 def dispatch_meta_properties(doc):
     extra = {}
@@ -171,22 +158,6 @@ class MongoengineUpdater(object):
         Fixes ETag value returned by PATCH responses.
         """
 
-        # DONE: possibly this is not needed anymore since eve stores _etag in DB
-        def fix_patch_etag(resource, request, payload):
-            return
-            # if self._etag_doc is None:
-            #     return
-            # # make doc from which the etag will be computed
-            # etag_doc = clean_doc(self._etag_doc)
-            # # load the response back agagin from json
-            # d = json.loads(payload.get_data(as_text=True))
-            # # compute new etag
-            # d[config.ETAG] = document_etag(etag_doc)
-            # payload.set_data(json.dumps(d))
-
-        # register post PATCH hook into current application
-        self.datalayer.app.on_post_PATCH += fix_patch_etag
-
     def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
         """
         Transforms update dict to special mongoengine syntax with set__,
@@ -216,24 +187,6 @@ class MongoengineUpdater(object):
                 return True
         return False
 
-    def _update_using_update_one(self, resource, id_, updates):
-        """
-        Updates one document atomically using QuerySet.update_one().
-        """
-        kwargs = self._transform_updates_to_mongoengine_kwargs(resource, updates)
-        qset = lambda: self.datalayer.cls_map.objects(resource)
-        qry = qset()(id=id_)
-        for doc in qry:
-            check_permissions(doc, 'PATCH')
-        qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
-        # DONE: possibly is not needed because eve stores _etag in db
-        # if self._has_empty_list(updates):
-        #     # Fix Etag when updating to empty list
-        #     model = qset()(id=id_).get()
-        #     self._etag_doc = dict(model.to_mongo())
-        # else:
-        #     self._etag_doc = None
-
     def _update_document(self, doc, updates):
         """
         Makes appropriate calls to update mongoengine document properly by
@@ -250,12 +203,10 @@ class MongoengineUpdater(object):
         Updates one document non-atomically using Document.save().
         """
         model = self.datalayer.cls_map.objects(resource)(id=id_).get()
-        self._update_document(model, updates)
         check_permissions(model, 'PATCH')
+        self._update_document(model, updates)
         model.save(write_concern=self.datalayer._wc(resource))
-        # Fix Etag when updating to empty list
-        # DONE: possibly is not needed because eve stores _etag in DB
-        #self._etag_doc = dict(model.to_mongo())
+        return model.etag
 
     def update(self, resource, id_, updates):
         """
@@ -263,15 +214,7 @@ class MongoengineUpdater(object):
 
         Does not handle mongo errors!
         """
-        opt = self.datalayer.mongoengine_options
-
-        #updates.pop("_etag", None)
-
-        if opt.get("use_atomic_update_for_patch", 1):
-            self._update_using_update_one(resource, id_, updates)
-        else:
-            self._update_using_save(resource, id_, updates)
-        return updates["_etag"] #self._etag_doc
+        return self._update_using_save(resource, id_, updates)
 
 
 class MongoengineDataLayer(Mongo):
@@ -286,13 +229,6 @@ class MongoengineDataLayer(Mongo):
 
     #: name of default queryset, where datalayer asks for data
     default_queryset = "objects"
-
-    #: Options for usage of mongoengine layer.
-    #: use_atomic_update_for_patch - when set to True, Mongoengine layer will
-    #: use update_one() method (which is atomic) for updating. But then you
-    #: will loose your pre/post-save hooks. When you set this to False, for
-    #: updating will be used save() method.
-    mongoengine_options = {"use_atomic_update_for_patch": True}
 
     def __init__(self, ext):
         """
@@ -369,7 +305,7 @@ class MongoengineDataLayer(Mongo):
 
     def find(self, resource, req, sub_resource_lookup):
         """
-        Seach for results and return list of them.
+        Search for results and return list of them.
 
         :param resource: name of requested resource as string.
         :param req: instance of :class:`eve.utils.ParsedRequest`.
@@ -527,18 +463,15 @@ class MongoengineDataLayer(Mongo):
                 doc_or_docs = [doc_or_docs]
 
             ids = []
-            for doc in doc_or_docs:
+            for doc in doc_or_docs:    
+                # strip those fields calculated in _fix_fields
+                remove_eve_mongoengine_fields(doc)            
                 model = self._doc_to_model(resource, doc)
                 check_permissions(model, 'POST')
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
                 doc[config.ID_FIELD] = model.id
-                # Recompute ETag since MongoEngine can modify the data via
-                # save hooks.
-                # DONE: possibly this is not needed anymore, since eve stores _etag in db
-                # clean_doc(doc)
-                # doc["_etag"] = document_etag(doc)
             return ids
         except pymongo.errors.OperationFailure as e:
             # most likely a 'w' (write_concern) setting which needs an
