@@ -34,6 +34,8 @@ class Response(BaseResponse):
                 json_data['_created'] = json_data.pop('created')
             if 'updated' in json_data:
                 json_data['_updated'] = json_data.pop('updated')
+            if 'etag' in json_data:
+                json_data['_etag'] = json_data.pop('etag')
 
             return json_data
 
@@ -124,6 +126,10 @@ class HawkeyDoc(Document):
     # document with save() hooked
     a = StringField()
     b = StringField()
+    c = StringField()
+    # and also cleaning
+    def clean(self):
+        self.c = 'Hello'
 
 def update_b(sender, document):
     document.b = document.a * 2 # 'a' -> 'aa'

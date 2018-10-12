@@ -60,11 +60,6 @@ def dispatch_meta_properties(doc):
             extra[name] = func()
     return extra
 
-def check_permissions(doc, method):
-    if hasattr(doc, '_check_permissions'):
-        return doc._check_permissions(method)
-    return True
-
 class PymongoQuerySet(object):
     """
     Dummy mongoengine-like QuerySet behaving just like queryset
@@ -80,7 +75,6 @@ class PymongoQuerySet(object):
             qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
                 extra = dispatch_meta_properties(doc)
-                check_permissions(doc, 'GET')
                 doc = dict(doc.to_mongo())
                 doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
                 for attr, value in iteritems(dict(doc)):
@@ -206,7 +200,6 @@ class MongoengineUpdater(object):
         """
         model = self.datalayer.cls_map.objects(resource)(id=id_).get()
         etag = model.etag
-        check_permissions(model, 'PATCH')
         self._update_document(model, updates)     
         # This will ensure atomicity or will raise an exception
         model.save(write_concern=self.datalayer._wc(resource), save_condition={ "etag": etag })
@@ -400,7 +393,6 @@ class MongoengineDataLayer(Mongo):
         try:
             doc = qry.get()
             extra = dispatch_meta_properties(doc)
-            check_permissions(doc, 'GET')
             doc = dict(doc.to_mongo())
             doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
             return clean_doc(doc)
@@ -463,7 +455,6 @@ class MongoengineDataLayer(Mongo):
                 # strip those fields calculated in _fix_fields
                 remove_eve_mongoengine_fields(doc)            
                 model = self._doc_to_model(resource, doc)
-                check_permissions(model, 'POST')
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
@@ -502,7 +493,6 @@ class MongoengineDataLayer(Mongo):
         try:
             # FIXME: filters?
             model = self._doc_to_model(resource, document)
-            check_permissions(model, 'PUT')
             model.save(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -530,9 +520,6 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
-            # Permission checking is mandatory
-            for doc in qry:
-                check_permissions(doc, 'DELETE')
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.

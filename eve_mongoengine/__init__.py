@@ -108,6 +108,9 @@ class EveMongoengine(object):
         self._parse_config()
         # overwrite default data layer to get proper mongoengine functionality
         app.data = self.datalayer_class(self)
+        # add self as an additional app field (if not, when you use the factory pattern the reference
+        # to the mongoengine object could get lost)
+        app.eve_mongoengine = self
         
     def _set_default_settings(self, settings):
         """
@@ -131,7 +134,7 @@ class EveMongoengine(object):
            
         resolve_document_etag(doc, sender._eve_resource)    
         document[eve_fields['etag']] = doc[config.ETAG]
-    
+
         now = get_utc_time()        
         document[eve_fields['updated']] = now
         if 'created' in kwargs and kwargs['created']:
@@ -167,16 +170,15 @@ class EveMongoengine(object):
 
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
-            mongoengine.signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
+            signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
             self.models[resource_name] = model_cls
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
             # create resource settings
-            # FIXME: probably the ETAG should be crated considering also dates
+            # FIXME: probably the ETAG should be created considering also dates
             resource_settings = Settings({ 
                 "schema": schema, 
                 "etag_ignore_fields": [config.DATE_CREATED, config.LAST_UPDATED, config.ETAG, '_id', '_cls'] 
-#                "etag_ignore_fields": [config.ETAG, '_id'] 
             })
             resource_settings.update(settings)
             # register to the app
