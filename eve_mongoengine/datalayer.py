@@ -17,6 +17,7 @@ from uuid import UUID
 import traceback
 from distutils.version import LooseVersion
 from .utils import clean_doc
+from werkzeug.exceptions import HTTPException
 
 # --- Third Party ---
 
@@ -34,7 +35,6 @@ from eve.utils import config, debug_error_message, validate_filters
 from eve.exceptions import ConfigException
 
 # Misc
-from werkzeug.exceptions import HTTPException
 from flask import abort, current_app as app
 import pymongo
 
@@ -74,8 +74,12 @@ class PymongoQuerySet(object):
         def iterate(obj):
             qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
+                try:
+                    doc._check_permissions('GET')
+                except AttributeError:
+                    pass
                 extra = dispatch_meta_properties(doc)
-                doc = dict(doc.to_mongo())
+                doc = dict(doc.to_mongo())                                
                 doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
                 for attr, value in iteritems(dict(doc)):
                     if isinstance(value, (list, dict)) and not value:
@@ -199,6 +203,10 @@ class MongoengineUpdater(object):
         Does not handle mongo errors!
         """
         model = self.datalayer.cls_map.objects(resource)(id=id_).get()
+        
+        # Test whether the user has the right permissions for the patch request 
+
+        if hasattr(model, '_check_permissions'): model._check_permissions('PATCH')
         etag = model.etag
         self._update_document(model, updates)     
         # This will ensure atomicity or will raise an exception
@@ -368,6 +376,7 @@ class MongoengineDataLayer(Mongo):
         if req and req.page > 1:
             qry = qry.skip((req.page - 1) * req.max_results)
 
+        # This is required for compliancy with eve >= 0.8.2
         self.__last_documents_count = qry.count()
 
         return PymongoQuerySet(qry)
@@ -375,6 +384,7 @@ class MongoengineDataLayer(Mongo):
 
     @property
     def last_documents_count(self):
+        # This is required for compliancy with eve >= 0.8.2
         try:
             return self.__last_documents_count
         except AttributeError:
@@ -403,6 +413,8 @@ class MongoengineDataLayer(Mongo):
         qry = self._projection(resource, projection, qry)
         try:
             doc = qry.get()
+            # Added for checking permissions
+            if hasattr(doc, '_check_permissions'): doc._check_permissions('GET')
             extra = dispatch_meta_properties(doc)
             doc = dict(doc.to_mongo())
             doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
@@ -466,6 +478,7 @@ class MongoengineDataLayer(Mongo):
                 # strip those fields calculated in _fix_fields
                 remove_eve_mongoengine_fields(doc)            
                 model = self._doc_to_model(resource, doc)
+                if hasattr(model, '_check_permissions'): model._check_permissions('POST')
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
@@ -486,7 +499,7 @@ class MongoengineDataLayer(Mongo):
 
     def update(self, resource, id_, updates, *args, **kwargs):
         """Called when performing PATCH request."""
-        try:
+        try:            
             return self.updater.update(resource, id_, updates)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -531,6 +544,7 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
+            # FIXME: add _check_permissions to each document            
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
