@@ -367,7 +367,18 @@ class MongoengineDataLayer(Mongo):
             qry = qry.limit(int(req.max_results))
         if req and req.page > 1:
             qry = qry.skip((req.page - 1) * req.max_results)
+
+        self.__last_documents_count = qry.count()
+
         return PymongoQuerySet(qry)
+
+
+    @property
+    def last_documents_count(self):
+        try:
+            return self.__last_documents_count
+        except AttributeError:
+            return 0
 
     def find_one(
         self, resource, req, check_auth_value=True, force_auth_field_projection=False, **lookup
