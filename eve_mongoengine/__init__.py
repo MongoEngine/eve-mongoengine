@@ -62,6 +62,12 @@ class EveMongoengine(object):
     #: others.
     default_item_methods = ["GET"]
 
+    #: Default role for resource access
+    default_resource_role = 'eve_resource_role'
+
+    #: Default role for item access
+    default_item_role = 'eve_item_role'
+
     #: The class used as Eve validator, which is also one of Eve's constructor
     #: params. In EveMongoengine, we need to overwrite it. If extending, assign
     #: only subclasses of :class:`EveMongoengineValidator`.
@@ -122,6 +128,9 @@ class EveMongoengine(object):
         if "item_methods" not in settings:
             # TODO: maybe get from self.app.supported_item_methods
             settings["item_methods"] = list(self.default_item_methods)
+        settings["allowed_roles"] = settings.get("allowed_roles", []) + [self.default_resource_role]
+        settings["allowed_item_roles"] = settings.get("allowed_item_roles", []) + [self.default_item_role]
+
 
     @staticmethod
     def _fix_fields(sender, document, **kwargs):
@@ -191,6 +200,15 @@ class EveMongoengine(object):
                 self.app.register_resource(*registration)
                 self.models[registration[0]] = model_cls
             model_cls._eve_resource = resource_name
+            # register eve database hooks, so that it would be possible
+            # to customize a fine-grain permission checking directly
+            # into the mongoengine model
+            for event in 'on_fetched_resource', 'on_fetched_item', 'on_fetched_diffs', \
+                'on_insert', 'on_inserted', 'on_replace', 'on_replaced', \
+                'on_update', 'on_updated', 'on_delete', 'on_deleted':
+                if hasattr(model_cls, event):
+                    eh = getattr(self.app, "{}_{}".format(event, resource_name)) 
+                    eh += getattr(model_cls, event)
 
     def fix_model_class(self, model_cls):
         """

@@ -74,10 +74,6 @@ class PymongoQuerySet(object):
         def iterate(obj):
             qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
-                try:
-                    doc._check_permissions('GET')
-                except AttributeError:
-                    pass
                 extra = dispatch_meta_properties(doc)
                 doc = dict(doc.to_mongo())                                
                 doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
@@ -206,7 +202,6 @@ class MongoengineUpdater(object):
         
         # Test whether the user has the right permissions for the patch request 
 
-        if hasattr(model, '_check_permissions'): model._check_permissions('PATCH')
         etag = model.etag
         self._update_document(model, updates)     
         # This will ensure atomicity or will raise an exception
@@ -414,7 +409,6 @@ class MongoengineDataLayer(Mongo):
         try:
             doc = qry.get()
             # Added for checking permissions
-            if hasattr(doc, '_check_permissions'): doc._check_permissions('GET')
             extra = dispatch_meta_properties(doc)
             doc = dict(doc.to_mongo())
             doc[app.config.get('EVE_MONGOENGINE_EXTRA_FIELD', '_extra')] = extra
@@ -478,7 +472,6 @@ class MongoengineDataLayer(Mongo):
                 # strip those fields calculated in _fix_fields
                 remove_eve_mongoengine_fields(doc)            
                 model = self._doc_to_model(resource, doc)
-                if hasattr(model, '_check_permissions'): model._check_permissions('POST')
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
@@ -544,7 +537,6 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
-            # FIXME: add _check_permissions to each document            
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
