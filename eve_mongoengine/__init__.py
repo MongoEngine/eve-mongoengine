@@ -205,7 +205,8 @@ class EveMongoengine(object):
             # into the mongoengine model
             for event in 'on_fetched_resource', 'on_fetched_item', 'on_fetched_diffs', \
                 'on_insert', 'on_inserted', 'on_replace', 'on_replaced', \
-                'on_update', 'on_updated', 'on_delete', 'on_deleted':
+                'on_update', 'on_updated', 'on_delete_resource', 'on_deleted_resource', \
+                'on_delete_item', 'on_deleted_item':
                 if hasattr(model_cls, event):
                     eh = getattr(self.app, "{}_{}".format(event, resource_name)) 
                     eh += getattr(model_cls, event)
