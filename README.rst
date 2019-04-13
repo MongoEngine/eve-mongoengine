@@ -40,7 +40,10 @@ See the `legacy` tag for the last legacy release (0.0.10).
 
 Do not use `develop` in production code. Instead, the `master` branch always points to the latest production release, and should be used instead.
 
+.. warning::
+    This branch or related tag is for a legacy version of the extension. Anything released before version 0.1 is considered legacy.
 
+=======
 About
 =====
 

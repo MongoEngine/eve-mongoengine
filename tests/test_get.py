@@ -2,13 +2,14 @@
 import uuid
 import unittest
 from operator import attrgetter
-from eve_mongoengine import EveMongoengine
-from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
-                   WrongDoc, NonStructuredDoc, Inherited, SETTINGS)
+from eve_mongoengine import EveMongoengine 
+from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc, \
+                  WrongDoc, NonStructuredDoc, Inherited, SETTINGS, in_app_context
 from eve.utils import config
 
 class TestHttpGet(BaseTest, unittest.TestCase):
 
+    @in_app_context
     def test_find_one(self):
         d = SimpleDoc(a='Tom', b=223).save()
         response = self.client.get('/simpledoc/%s' % d.id)
@@ -21,6 +22,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertEqual(json_data['b'], 223)
         d.delete()
 
+    @in_app_context
     def test_find_one_projection(self):
         d = SimpleDoc(a='Tom', b=223).save()
         response = self.client.get('/simpledoc/%s?projection={"a":1}' % d.id)
@@ -40,10 +42,12 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertEqual(json_data['_id'], str(d.id))
         d.delete()
 
+    @in_app_context
     def test_find_one_nonexisting(self):
         response = self.client.get('/simpledoc/abcdef')
         self.assertEqual(response.status_code, 404)
         
+    @in_app_context
     def test_projection_on_non_structured_doc(self):
         d = NonStructuredDoc(new_york="great").save()
         response = self.client.get('/nonstructureddoc/%s' % str(d.id))
@@ -52,6 +56,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertIn('NewYork', json_data)
         self.assertEqual(json_data['NewYork'], 'great')
 
+    @in_app_context
     def test_datasource_projection(self):
         SETTINGS['DOMAIN'] = {'eve-mongoengine':{}}
         app = Eve(settings=SETTINGS)
@@ -69,6 +74,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         finally:
             d.delete()
 
+    @in_app_context
     def test_find_all(self):
         _all = []
         for data in ({'a': "Hello", 'b':1},
@@ -85,6 +91,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         for d in _all:
             d.delete()
 
+    @in_app_context
     def test_find_all_projection(self):
         d = SimpleDoc(a='Tom', b=223).save()
         response = self.client.get('/simpledoc?projection={"a": 1}')
@@ -99,9 +106,11 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertNotIn('a', data)
         d.delete()
 
+    @in_app_context
     def test_find_all_pagination(self):
         self.skipTest("Not implemented yet.")
 
+    @in_app_context
     def test_find_all_sorting(self):
         d = SimpleDoc(a='abz', b=3).save()
         d2 = SimpleDoc(a='abc', b=-7).save()
@@ -127,6 +136,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             d.delete()
             d2.delete()
 
+    @in_app_context
     def test_find_all_default_sort(self):
         s = self.app.config['DOMAIN']['simpledoc']['datasource']
         d = SimpleDoc(a='abz', b=3).save()
@@ -167,6 +177,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             d.delete()
             d2.delete()
 
+    @in_app_context
     def test_find_all_filtering(self):
         d = SimpleDoc(a='x', b=987).save()
         d2 = SimpleDoc(a='y', b=123).save()
@@ -179,6 +190,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             d.delete()
             d2.delete()
 
+    @in_app_context
     def test_etag_in_item_and_resource(self):
         # etag of some entity has to be the same when fetching one item compared
         # to etag of part of feed (resource)
@@ -190,6 +202,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         finally:
             d.delete()
 
+    @in_app_context
     def test_embedded_resource_serialization(self):
         s = SimpleDoc(a="Answer to everything", b=42).save()
         d = ComplexDoc(r=s).save()
@@ -218,7 +231,8 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         ext = EveMongoengine(app)
         ext.add_model(SimpleDoc, lowercase=False)
         client = app.test_client()
-        d = SimpleDoc(a='Tom', b=223).save()
+        with app.app_context():
+            d = SimpleDoc(a='Tom', b=223).save()
 
         # Sanity Check: Lowercase is Disabled
         response = client.get('/simpledoc/')
@@ -233,9 +247,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
             expected_url = '/' + '/'.join( expected_url.split('/')[1:] )
         self.assertTrue('SimpleDoc' in expected_url)
 
-
-
-
+    @in_app_context
     def test_get_subresource(self):
         s = SimpleDoc(a="Answer to everything", b=42).save()
         d = ComplexDoc(l=['a', 'b'], r=s).save()
@@ -248,6 +260,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertEqual(real, [['a', 'b'], ['c', 'd']])
 
 
+    @in_app_context
     def test_inherited(self):
         # tests if inherited documents behave the same way
         i = Inherited(a='Answer', b=42, c='BarBaz').save()

@@ -1,4 +1,3 @@
-
 """
     eve_mongoengine.struct
     ~~~~~~~~~~~~~~~~~~~~~~
@@ -32,8 +31,10 @@ class Settings(dict):
     method in Settings does not overwrite the key when value is dictionary,
     but tries to merge inner dicts in an intelligent way.
     """
+
     def update(self, other):
         """Update method, which respects dictionaries recursively."""
         _merge_dicts(self, other)
+
 
 __all__ = [Settings]

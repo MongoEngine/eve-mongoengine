@@ -2,7 +2,7 @@
 import json
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc, ComplexDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, in_app_context
 
 class TestHttpPut(BaseTest, unittest.TestCase):
     def setUp(self):
@@ -38,7 +38,7 @@ class TestHttpPut(BaseTest, unittest.TestCase):
 
     def test_ifmatch_missing(self):
         response = self.do_put(data='{"a": "greg"}', headers=())
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 428)
 
     def test_put_overwrite_all(self):
         response = self.do_put(data='{"a": "greg", "b": 300}')
@@ -56,6 +56,7 @@ class TestHttpPut(BaseTest, unittest.TestCase):
         self.assertEqual(response['a'], "greg")
         self.assertNotIn('b', response)
 
+    @in_app_context
     def test_put_subresource(self):
         # create new resource and subresource
         s = SimpleDoc(a="Answer to everything", b=42).save()

@@ -61,8 +61,8 @@ Usage
     app = Eve(settings=my_settings)
     # init extension
     ext = EveMongoengine(app)
-    # register model to eve
-    ext.add_model(Person)
+    # register model to eve and set further eve parameters, e.g., projections
+    ext.add_model(Person, datasource={ 'projection': { 'name': 1 } })
 
     # let's roll
     app.run()

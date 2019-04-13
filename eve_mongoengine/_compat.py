@@ -1,4 +1,3 @@
-
 """
     eve_mongoengine._compat
     ~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,7 +31,7 @@ else:
     iterkeys = lambda x: iter(x.keys())
     itervalues = lambda x: iter(x.values())
     u = lambda x: x
-    b = lambda x: x.encode('iso-8859-1') if not isinstance(x, bytes) else x
+    b = lambda x: x.encode("iso-8859-1") if not isinstance(x, bytes) else x
     next = next
     unichr = chr
     imap = map

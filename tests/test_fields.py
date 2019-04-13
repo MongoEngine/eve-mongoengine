@@ -6,8 +6,8 @@ import unittest
 from eve.exceptions import SchemaException
 from eve.utils import config
 
-from tests import (BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc,
-                   WrongDoc, FieldsDoc, PrimaryKeyDoc, SETTINGS)
+from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, Inner, LimitedDoc, \
+                  WrongDoc, FieldsDoc, PrimaryKeyDoc, SETTINGS, in_app_context
 from eve_mongoengine._compat import iteritems, long
 
 class TestFields(BaseTest, unittest.TestCase):
@@ -15,6 +15,7 @@ class TestFields(BaseTest, unittest.TestCase):
     def tearDown(self):
         FieldsDoc.objects.delete()
 
+    @in_app_context
     def _fixture_template(self, data_ok, expected=None, data_fail=None, msg=None):
         d = FieldsDoc(**data_ok).save()
         if expected is None:
@@ -40,13 +41,14 @@ class TestFields(BaseTest, unittest.TestCase):
         self._fixture_template(data_ok={'a':'http://google.com'},
                                data_fail={'a':'foobar'},
                                msg={'a': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " URL: foobar: ['a'])"})
+                                   " scheme foobar in URL: foobar: "\
+                                   "['a'])"})
 
     def test_email_field(self):
         self._fixture_template(data_ok={'b':'heller.stanislav@gmail.com'},
                                data_fail={'b':'invalid@email'},
                                msg={'b': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " Mail-address: invalid@email: ['b'])"})
+                                   " email address: invalid@email: ['b'])"})
 
     def test_uuid_field(self):
         self._fixture_template(data_ok={'g': 'ddbec64f-3178-43ed-aee3-1455968f24ab'},
@@ -72,6 +74,7 @@ class TestFields(BaseTest, unittest.TestCase):
                                    "values: ['f'])"})
 
 
+    @in_app_context
     def test_embedded_document_field(self):
         i = Inner(a="hihi", b=123)
         d = ComplexDoc(i=i)
@@ -100,6 +103,8 @@ class TestFields(BaseTest, unittest.TestCase):
         self.assertIn('b', json_data[config.ISSUES]['i'])
         self.assertEqual(json_data[config.ISSUES]['i']['b'], 'must be of integer type')
 
+  
+    @in_app_context
     def test_embedded_in_list(self):
         # that's a tuff one
         i1 = Inner(a="foo", b=789)
@@ -113,6 +118,7 @@ class TestFields(BaseTest, unittest.TestCase):
         finally:
             d.delete()
 
+    @in_app_context
     def test_dynamic_field(self):
         d = ComplexDoc(n=789)
         d.save()
@@ -124,6 +130,7 @@ class TestFields(BaseTest, unittest.TestCase):
             # cleanup
             d.delete()
 
+    @in_app_context
     def test_dict_field(self):
         d = ComplexDoc(d={'g':'good', 'h':'hoorai'})
         d.save()
@@ -135,6 +142,7 @@ class TestFields(BaseTest, unittest.TestCase):
             # cleanup
             d.delete()
 
+    @in_app_context
     def test_reference_field(self):
         s = SimpleDoc(a="samurai", b=911)
         s.save()
@@ -149,6 +157,7 @@ class TestFields(BaseTest, unittest.TestCase):
             d.delete()
             s.delete()
 
+    @in_app_context
     def test_db_field_name(self):
         # test if eve returns fields named like in db, not in python
         response = self.client.post('/fieldsdoc/',
@@ -177,6 +186,7 @@ class TestFields(BaseTest, unittest.TestCase):
                                data_fail={'o': 1},
                                msg={'o': "must be of string type"})
 
+    @in_app_context
     def test_custom_primary_key(self):
         # test case, when custom id_field (primary key) is set.
         # XXX: datalayer should handle this instead of relying on default _id,

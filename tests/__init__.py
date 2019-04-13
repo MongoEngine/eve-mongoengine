@@ -4,6 +4,7 @@ from flask import Response as BaseResponse
 from mongoengine import *
 import mongoengine.signals
 from eve import Eve
+from functools import wraps
 
 from eve_mongoengine import EveMongoengine
 
@@ -12,6 +13,8 @@ SETTINGS = {
     'MONGO_PORT': 27017,
     'MONGO_DBNAME': 'eve_mongoengine_test',
     'DOMAIN': {'eve-mongoengine': {}},
+    'RESOURCE_METHODS': ['GET', 'POST', 'DELETE'],
+    'ITEM_METHODS': ['GET', 'PATCH', 'PUT']
 }
 
 class Response(BaseResponse):
@@ -31,6 +34,8 @@ class Response(BaseResponse):
                 json_data['_created'] = json_data.pop('created')
             if 'updated' in json_data:
                 json_data['_updated'] = json_data.pop('updated')
+            if 'etag' in json_data:
+                json_data['_etag'] = json_data.pop('etag')
 
             return json_data
 
@@ -121,6 +126,10 @@ class HawkeyDoc(Document):
     # document with save() hooked
     a = StringField()
     b = StringField()
+    c = StringField()
+    # and also cleaning
+    def clean(self):
+        self.c = 'Hello'
 
 def update_b(sender, document):
     document.b = document.a * 2 # 'a' -> 'aa'
@@ -134,8 +143,10 @@ class BaseTest(object):
         app = Eve(settings=SETTINGS)
         app.debug = True
         ext = EveMongoengine(app)
-        ext.add_model([SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc,
-                       NonStructuredDoc, Inherited, HawkeyDoc])
+        for Doc in SimpleDoc, ComplexDoc, LimitedDoc, FieldsDoc, \
+                       NonStructuredDoc, Inherited, HawkeyDoc:
+            ext.add_model(Doc, resource_methods=['GET', 'POST', 'DELETE'], 
+                item_methods=['GET', 'PATCH', 'PUT', 'DELETE'])
         cls.ext = ext
         cls.client = app.test_client()
         cls.app = app
@@ -145,3 +156,9 @@ class BaseTest(object):
         # deletes the whole test database
         cls.app.data.conn.drop_database(SETTINGS['MONGO_DBNAME'])
 
+def in_app_context(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        with self.app.app_context():
+            return fn(self, *args, **kwargs)
+    return wrapper

@@ -19,7 +19,7 @@ extra_opts = dict()
 setup(
     name='eve-mongoengine',
     version=VERSION,
-    url='https://github.com/seglberg/eve-mongoengine',
+    url='https://github.com/liuq/eve-mongoengine',
     author='Stanislav Heller',
     author_email='heller.stanislav@{nospam}gmail.com',
     maintainer="Matthew Ellison",
@@ -34,7 +34,7 @@ setup(
     install_requires=[
         'Eve>=0.5.3',
         'Blinker',
-        'Mongoengine>=0.8.7,<=0.9',
+        'Mongoengine>=0.9',
     ],
     **extra_opts
 )

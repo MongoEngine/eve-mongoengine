@@ -9,7 +9,7 @@ from eve.utils import config
 from eve import __version__
 EVE_VERSION = LooseVersion(__version__)
 
-from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc, in_app_context
 
 
 def post_simple_item(f):
@@ -37,11 +37,15 @@ def post_complex_item(f):
                                     data=payload,
                                     content_type='application/json')
         json_data = response.get_json()
+        print("Before:", json_data)
         self._id = json_data[config.ID_FIELD]
         self.url = '/complexdoc/%s' % json_data[config.ID_FIELD]
         self.etag = json_data[config.ETAG]
+        json_data = self.client.get(self.url).get_json()
+        print("After:", json_data)
+        print("In DB:", ComplexDoc.objects(id=self._id).first().to_json())
         # check if etags are okay
-        self.assertEqual(self.client.get(self.url).get_json()[config.ETAG], self.etag)
+        self.assertEqual(json_data[config.ETAG], self.etag)
         #self._id = response[config.ID_FIELD]
         self.updated = json_data[config.LAST_UPDATED]
         try:
@@ -93,6 +97,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         expected = dict(raw)
         expected['a'] = 'greg'
         real = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
+        del real['_etag']
+        del expected['_etag']
         self.assertDictEqual(real, expected)
         # test if GET response returns corrent response
         response = self.client.get(self.url).get_json()
@@ -186,6 +192,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         doc = ComplexDoc.objects[0]
         self.assertEqual(doc.p[0].ll, [])
 
+    @in_app_context
     def test_patch_subresource(self):
         # create new resource and subresource
         s = SimpleDoc(a="Answer to everything", b=42).save()
@@ -217,7 +224,8 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     def test_patch_field_with_different_dbfield(self):
         # tests patching field whith has mongoengine's db_field specified
         # and different from python field name
-        s = FieldsDoc(n="Hello").save()
+        with self.app.app_context():
+            s = FieldsDoc(n="Hello").save()
         response = self.client.get('/fieldsdoc/%s' % s.id)
         etag = response.get_json()[config.ETAG]
         headers = [('If-Match', etag)]
@@ -231,11 +239,12 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         resp_json = response.get_json()
         self.assertEqual(resp_json[config.STATUS], "OK")
 
+    @in_app_context
     @post_simple_item
     def test_update_date_consistency(self):
         # tests if _updated is really updated when PATCHing resource
         updated = self.client.get(self.url).get_json()[config.LAST_UPDATED]
-        time.sleep(1)
+        time.sleep(1) # needed because of time granularity used
         s = SimpleDoc.objects.get()
         updated_before_patch = s.updated
         s.a = "bob"
@@ -246,13 +255,3 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertGreater(delta.seconds, 0)
 
 
-class TestHttpPatchUsingSaveMethod(TestHttpPatch):
-    @classmethod
-    def setUpClass(cls):
-        BaseTest.setUpClass()
-        cls.app.data.mongoengine_options['use_atomic_update_for_patch'] = False
-
-    @classmethod
-    def tearDownClass(cls):
-        BaseTest.tearDownClass()
-        cls.app.data.mongoengine_options['use_atomic_update_for_patch'] = True
