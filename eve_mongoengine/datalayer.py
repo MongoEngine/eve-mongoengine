@@ -1,4 +1,3 @@
-
 """
     eve_mongoengine.datalayer
     ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -10,33 +9,26 @@
     :license: BSD, see LICENSE for more details.
 """
 
+import json
+
 # builtin
 import sys
-import ast
-import json
-from uuid import UUID
 import traceback
 from distutils.version import LooseVersion
+from uuid import UUID
+
+from eve.io.mongo import MongoJSONEncoder, Mongo
+from eve.utils import config, debug_error_message, validate_filters, document_etag
+from eve.exceptions import ConfigException
+from mongoengine import __version__, DoesNotExist, FileField, NotUniqueError
+from mongoengine.connection import get_db, connect
 
 # --- Third Party ---
 
-# MongoEngine
-from mongoengine import __version__
-from mongoengine import (DoesNotExist, FileField)
-from mongoengine.connection import get_db, connect
-
 MONGOENGINE_VERSION = LooseVersion(__version__)
 
-# Eve
-from eve.io.mongo import Mongo, MongoJSONEncoder
-from eve.io.mongo.parser import parse, ParseError
-from eve.utils import (
-    config, debug_error_message, validate_filters, document_etag
-)
-from eve.exceptions import ConfigException
 
 # Misc
-from werkzeug.exceptions import HTTPException
 from flask import abort
 import pymongo
 
@@ -65,7 +57,7 @@ def clean_doc(doc):
     # for attr, value in iteritems(dict(doc)):
     #     if isinstance(value, (list, dict)) and not value:
     #         del doc[attr]
-    doc.pop('_etag', None)
+    doc.pop("_etag", None)
 
     return doc
 
@@ -82,7 +74,7 @@ class PymongoQuerySet(object):
 
     def __iter__(self):
         def iterate(obj):
-            qs = object.__getattribute__(obj, '_qs')
+            qs = object.__getattribute__(obj, "_qs")
             for doc in qs:
                 # MPI-1220#2
                 # doc = dict(doc.to_mongo())
@@ -91,16 +83,18 @@ class PymongoQuerySet(object):
                 #         del doc[attr]
                 doc = doc.to_mongo()
                 yield doc
+
         return iterate(self)
 
     def __getattribute__(self, name):
-        return getattr(object.__getattribute__(self, '_qs'), name)
+        return getattr(object.__getattribute__(self, "_qs"), name)
 
 
 class MongoengineJsonEncoder(MongoJSONEncoder):
     """
     Propretary JSON encoder to support special mongoengine's special fields.
     """
+
     def default(self, obj):
         if isinstance(obj, UUID):
             # rendered as a string
@@ -115,6 +109,7 @@ class ResourceClassMap(object):
     Helper class providing translation from resource names to mongoengine
     models and their querysets.
     """
+
     def __init__(self, datalayer):
         self.datalayer = datalayer
 
@@ -148,6 +143,7 @@ class MongoengineUpdater(object):
     drity and there would be unnecessary 'helper' methods in the main class
     MongoengineDataLayer causing namespace pollution.
     """
+
     def __init__(self, datalayer):
         self.datalayer = datalayer
         self._etag_doc = None
@@ -157,6 +153,7 @@ class MongoengineUpdater(object):
         """
         Fixes ETag value returned by PATCH responses.
         """
+
         def fix_patch_etag(resource, request, payload):
             if self._etag_doc is None:
                 return
@@ -167,6 +164,7 @@ class MongoengineUpdater(object):
             # compute new etag
             d[config.ETAG] = document_etag(etag_doc)
             payload.set_data(json.dumps(d))
+
         # register post PATCH hook into current application
         self.datalayer.app.on_post_PATCH += fix_patch_etag
 
@@ -203,8 +201,7 @@ class MongoengineUpdater(object):
         """
         Updates one document atomically using QuerySet.update_one().
         """
-        kwargs = self._transform_updates_to_mongoengine_kwargs(resource,
-                                                               updates)
+        kwargs = self._transform_updates_to_mongoengine_kwargs(resource, updates)
         qset = lambda: self.datalayer.cls_map.objects(resource)
         qry = qset()(id=id_)
         qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
@@ -247,9 +244,9 @@ class MongoengineUpdater(object):
         """
         opt = self.datalayer.mongoengine_options
 
-        updates.pop('_etag', None)
+        updates.pop("_etag", None)
 
-        if opt.get('use_atomic_update_for_patch', 1):
+        if opt.get("use_atomic_update_for_patch", 1):
             self._update_using_update_one(resource, id_, updates)
         else:
             self._update_using_save(resource, id_, updates)
@@ -262,20 +259,19 @@ class MongoengineDataLayer(Mongo):
 
     Most of functionality is copied from :class:`eve.io.mongo.Mongo`.
     """
+
     #: default JSON encoder
     json_encoder_class = MongoengineJsonEncoder
 
     #: name of default queryset, where datalayer asks for data
-    default_queryset = 'objects'
+    default_queryset = "objects"
 
     #: Options for usage of mongoengine layer.
     #: use_atomic_update_for_patch - when set to True, Mongoengine layer will
     #: use update_one() method (which is atomic) for updating. But then you
     #: will loose your pre/post-save hooks. When you set this to False, for
     #: updating will be used save() method.
-    mongoengine_options = {
-        'use_atomic_update_for_patch': True
-    }
+    mongoengine_options = {"use_atomic_update_for_patch": True}
 
     def __init__(self, ext):
         """
@@ -284,21 +280,22 @@ class MongoengineDataLayer(Mongo):
         :param ext: instance of :class:`EveMongoengine`.
         """
         # get authentication info
-        username = ext.app.config.get('MONGO_USERNAME', None)
-        password = ext.app.config.get('MONGO_PASSWORD', None)
+        username = ext.app.config.get("MONGO_USERNAME", None)
+        password = ext.app.config.get("MONGO_PASSWORD", None)
         auth = (username, password)
         if any(auth) and not all(auth):
-            raise ConfigException('Must set both USERNAME and PASSWORD '
-                                  'or neither')
+            raise ConfigException("Must set both USERNAME and PASSWORD " "or neither")
         # try to connect to db
-        self.conn = connect(ext.app.config['MONGO_DBNAME'],
-                            host=ext.app.config['MONGO_HOST'],
-                            port=ext.app.config['MONGO_PORT'])
+        self.conn = connect(
+            ext.app.config["MONGO_DBNAME"],
+            host=ext.app.config["MONGO_HOST"],
+            port=ext.app.config["MONGO_PORT"],
+        )
         self.models = ext.models
         self.app = ext.app
         # create dummy driver instead of PyMongo, which causes errors
         # when instantiating after config was initialized
-        self.driver = type('Driver', (), {})()
+        self.driver = type("Driver", (), {})()
         self.driver.db = get_db()
         # authenticate
         if any(auth):
@@ -312,6 +309,7 @@ class MongoengineDataLayer(Mongo):
         """
         If application is in debug mode, prints every traceback to stderr.
         """
+        self.app.logger.exception(exc)
         if self.app.debug:
             traceback.print_exc(file=sys.stderr)
         raise exc
@@ -330,7 +328,7 @@ class MongoengineDataLayer(Mongo):
 
         # strip special underscore prefixed attributes -> in mongoengine
         # they arent prefixed
-        projection.discard('_id')
+        projection.discard("_id")
 
         # We must translate any database field names to their corresponding
         # MongoEngine names before attempting to use them.
@@ -348,7 +346,7 @@ class MongoengineDataLayer(Mongo):
             qry = qry.exclude(*projection)
         else:
             # id has to be always there
-            projection.append('id')
+            projection.append("id")
             qry = qry.only(*projection)
         return qry
 
@@ -375,7 +373,6 @@ class MongoengineDataLayer(Mongo):
         # TODO should validate on unknown sort fields (mongo driver doesn't
         # return an error)
 
-
         client_sort = self._convert_sort_request_to_dict(req)
         spec = self._convert_where_request_to_dict(resource, req)
 
@@ -387,26 +384,22 @@ class MongoengineDataLayer(Mongo):
             spec = self.combine_queries(spec, sub_resource_lookup)
 
         if (
-                config.DOMAIN[resource]["soft_delete"]
-                and not (req and req.show_deleted)
-                and not self.query_contains_field(spec, config.DELETED)
+            config.DOMAIN[resource]["soft_delete"]
+            and not (req and req.show_deleted)
+            and not self.query_contains_field(spec, config.DELETED)
         ):
             # Soft delete filtering applied after validate_filters call as
             # querying against the DELETED field must always be allowed when
             # soft_delete is enabled
             spec = self.combine_queries(spec, {config.DELETED: {"$ne": True}})
 
-
         spec = self._mongotize(spec, resource)
-
 
         client_projection = self._client_projection(req)
 
         datasource, spec, projection, sort = self._datasource_ex(
-            resource,
-            spec,
-            client_projection,
-            client_sort)
+            resource, spec, client_projection, client_sort
+        )
 
         if len(spec) > 0:
             args["filter"] = spec
@@ -433,10 +426,10 @@ class MongoengineDataLayer(Mongo):
         # apply projection
         qry = self._projection(resource, projection, qry)
         # apply limits
-        if req.max_results:
-            qry = qry.limit(int(req.max_results))
-        if req.page > 1:
-            qry = qry.skip((req.page - 1) * req.max_results)
+        if args.get("limit"):
+            qry = qry.limit(int(args["limit"]))
+        if args.get("skip"):
+            qry = qry.skip(args["skip"])
 
         count = None
         if perform_count:
@@ -454,12 +447,19 @@ class MongoengineDataLayer(Mongo):
                 # 3. Mongo 3.4; $where: pass (via fallback)
                 # 4. Mongo 3.4; $expr: fail (operator not supported by db)
 
-                # See: http://api.mongodb.com/python/current/api/pymongo/collection.html#pymongo.collection.Collection.count
+                # See: http://api.mongodb.com/python/current/api/pymongo/collection.html
+                # #pymongo.collection.Collection.count
                 pass
         return PymongoQuerySet(qry), count
 
-    def find_one(self, resource, req, check_auth_value=True,
-                        force_auth_field_projection=False, **lookup):
+    def find_one(
+        self,
+        resource,
+        req,
+        check_auth_value=True,
+        force_auth_field_projection=False,
+        **lookup
+    ):
         """
         Look for one object.
         """
@@ -476,9 +476,9 @@ class MongoengineDataLayer(Mongo):
         )
 
         if (
-                (config.DOMAIN[resource]["soft_delete"])
-                and (not req or not req.show_deleted)
-                and (not self.query_contains_field(lookup, config.DELETED))
+            (config.DOMAIN[resource]["soft_delete"])
+            and (not req or not req.show_deleted)
+            and (not self.query_contains_field(lookup, config.DELETED))
         ):
             filter_ = self.combine_queries(filter_, {config.DELETED: {"$ne": True}})
 
@@ -497,8 +497,8 @@ class MongoengineDataLayer(Mongo):
     def _doc_to_model(self, resource, doc):
 
         # Strip underscores from special key names
-        if '_id' in doc:
-            doc['id'] = doc.pop('_id')
+        if "_id" in doc:
+            doc["id"] = doc.pop("_id")
 
         cls = self.cls_map[resource]
 
@@ -511,13 +511,17 @@ class MongoengineDataLayer(Mongo):
         # Document with unknown keys.
         if MONGOENGINE_VERSION >= LooseVersion("0.9.0"):
             from mongoengine import FieldDoesNotExist
+
             doc_keys = set(cls._fields) & set(doc)
             try:
                 instance = cls(**{k: doc[k] for k in doc_keys})
             except FieldDoesNotExist as e:
-                abort(422, description=debug_error_message(
-                    'mongoengine.FieldDoesNotExist: %s' % e
-                ))
+                abort(
+                    422,
+                    description=debug_error_message(
+                        "mongoengine.FieldDoesNotExist: %s" % e
+                    ),
+                )
         else:
             instance = cls(**doc)
 
@@ -529,8 +533,7 @@ class MongoengineDataLayer(Mongo):
             # special hack..
             if isinstance(field, FileField):
                 if attr in doc:
-                    proxy = field.get_proxy_obj(key=field.name,
-                                                instance=instance)
+                    proxy = field.get_proxy_obj(key=field.name, instance=instance)
                     proxy.grid_id = doc[attr]
                     instance._data[attr] = proxy
         return instance
@@ -552,15 +555,18 @@ class MongoengineDataLayer(Mongo):
                 # Recompute ETag since MongoEngine can modify the data via
                 # save hooks.
                 clean_doc(doc)
-                doc['_etag'] = document_etag(doc)
+                doc["_etag"] = document_etag(doc)
             return ids
-        except pymongo.errors.OperationFailure as e:
+        except NotUniqueError as e:
             # most likely a 'w' (write_concern) setting which needs an
             # existing ReplicaSet which doesn't exist. Please note that the
             # update will actually succeed (a new ETag will be needed).
-            abort(500, description=debug_error_message(
-                'pymongo.errors.OperationFailure: %s' % e
-            ))
+            abort(
+                400,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
         except Exception as exc:
             self._handle_exception(exc)
 
@@ -570,9 +576,12 @@ class MongoengineDataLayer(Mongo):
             return self.updater.update(resource, id_, updates)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
-            abort(500, description=debug_error_message(
-                'pymongo.errors.OperationFailure: %s' % e
-            ))
+            abort(
+                500,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
         except Exception as exc:
             self._handle_exception(exc)
 
@@ -584,9 +593,12 @@ class MongoengineDataLayer(Mongo):
             model.save(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
-            abort(500, description=debug_error_message(
-                'pymongo.errors.OperationFailure: %s' % e
-            ))
+            abort(
+                500,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
         except Exception as exc:
             self._handle_exception(exc)
 
@@ -603,8 +615,11 @@ class MongoengineDataLayer(Mongo):
             qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
-            abort(500, description=debug_error_message(
-                'pymongo.errors.OperationFailure: %s' % e
-            ))
+            abort(
+                500,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
         except Exception as exc:
             self._handle_exception(exc)

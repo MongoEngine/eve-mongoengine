@@ -1,4 +1,3 @@
-
 import unittest
 from mongoengine import Document, StringField, queryset_manager
 
@@ -11,7 +10,7 @@ class TwoFaceDoc(Document):
 
     @queryset_manager
     def all_objects(self, queryset):
-        return queryset.filter(s__nin=['a', 'b'])
+        return queryset.filter(s__nin=["a", "b"])
 
 
 class TestMongoengineFix(unittest.TestCase):
@@ -29,19 +28,19 @@ class TestMongoengineFix(unittest.TestCase):
         cls.client = app.test_client()
 
     def test_switch_queryset(self):
-        t1 = TwoFaceDoc(s='x').save()
-        t2 = TwoFaceDoc(s='a').save()
-        t3 = TwoFaceDoc(s='b').save()
-        t4 = TwoFaceDoc(s='abc').save()
+        t1 = TwoFaceDoc(s="x").save()
+        t2 = TwoFaceDoc(s="a").save()
+        t3 = TwoFaceDoc(s="b").save()
+        t4 = TwoFaceDoc(s="abc").save()
 
         # set queryset to `all_objects`
-        self.app.data.default_queryset = 'all_objects'
-        r = self.client.get('/twofacedoc/').get_json()
-        returned = set([x['s'] for x in r['_items']])
-        self.assertSetEqual(set(['x', 'abc']), returned)
+        self.app.data.default_queryset = "all_objects"
+        r = self.client.get("/twofacedoc/").get_json()
+        returned = set([x["s"] for x in r["_items"]])
+        self.assertSetEqual(set(["x", "abc"]), returned)
 
         # back to `objects`
-        self.app.data.default_queryset = 'objects'
-        r = self.client.get('/twofacedoc/').get_json()
-        returned = set([x['s'] for x in r['_items']])
-        self.assertSetEqual(set(['x', 'abc', 'a', 'b']), returned)
+        self.app.data.default_queryset = "objects"
+        r = self.client.get("/twofacedoc/").get_json()
+        returned = set([x["s"] for x in r["_items"]])
+        self.assertSetEqual(set(["x", "abc", "a", "b"]), returned)
