@@ -223,7 +223,7 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         expected_url = json_data[config.LINKS]['self']['href']
         if ':' in expected_url:
             expected_url = '/' + '/'.join( expected_url.split('/')[1:] )
-        self.assertEqual(expected_url, '/SimpleDoc')
+        self.assertEqual(expected_url, 'SimpleDoc')
         # not lowercase when uppercase
         response = client.get('/simpledoc/')
         self.assertEqual(response.status_code, 404)

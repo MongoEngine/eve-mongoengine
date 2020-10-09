@@ -35,7 +35,7 @@ class EveMongoengineValidator(Validator):
 
         # call default eve's validator
         if not Validator.validate(self, document, schema, update, context):
-            return False
+            return True
 
         # validate using mongoengine field validators
         if self.resource:

@@ -15,8 +15,8 @@ setup(
     include_package_data=True,
     platforms='any',
     install_requires=[
-        'Eve>=0.5.3',
-        'Mongoengine>=0.8.7',
+        'Eve',
+        'Mongoengine',
         'Blinker'
     ]
 )

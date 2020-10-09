@@ -40,13 +40,12 @@ class TestFields(BaseTest, unittest.TestCase):
         self._fixture_template(data_ok={'a':'http://google.com'},
                                data_fail={'a':'foobar'},
                                msg={'a': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " URL: foobar: ['a'])"})
+                                   " scheme foobar in URL: foobar: ['a'])"})
 
     def test_email_field(self):
         self._fixture_template(data_ok={'b':'heller.stanislav@gmail.com'},
                                data_fail={'b':'invalid@email'},
-                               msg={'b': "ValidationError (FieldsDoc:None) (Invalid"\
-                                   " Mail-address: invalid@email: ['b'])"})
+                               msg={'b': 'ValidationError (FieldsDoc:None) (Invalid email address: invalid@email (domain validation failed): [\'b\'])'})
 
     def test_uuid_field(self):
         self._fixture_template(data_ok={'g': 'ddbec64f-3178-43ed-aee3-1455968f24ab'},
@@ -153,6 +152,11 @@ class TestFields(BaseTest, unittest.TestCase):
         # test if eve returns fields named like in db, not in python
         response = self.client.post('/fieldsdoc/',
                                     data='{"longFieldName": "hello"}',
+                                    content_type='application/json')
+        json_data = response.get_json()
+        self.assertEqual(response.status_code, 422)
+        response = self.client.post('/fieldsdoc/',
+                                    data='{"n": "hello"}',
                                     content_type='application/json')
         json_data = response.get_json()
         self.assertEqual(response.status_code, 201)
