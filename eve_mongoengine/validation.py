@@ -14,10 +14,10 @@
     :license: BSD, see LICENSE for more details.
 """
 
+from eve.io.mongo.validation import Validator
 from flask import current_app as app
 from mongoengine import ValidationError, FileField
 
-from eve.io.mongo.validation import Validator
 from eve_mongoengine._compat import iteritems
 
 
@@ -26,6 +26,7 @@ class EveMongoengineValidator(Validator):
     Helper validator which adapts mongoengine special-purpose fields
     to cerberus validator API.
     """
+
     def validate(self, document, schema=None, update=False, context=None):
         """
         Main validation method which simply tries to validate against cerberus
@@ -40,6 +41,14 @@ class EveMongoengineValidator(Validator):
         # validate using mongoengine field validators
         if self.resource:
             model_cls = app.data.models[self.resource]
+            translate = lambda x: model_cls._reverse_db_field_map.get(x)
+            new_document = dict()
+            for field, value in document.items():
+                field_copy = field.split(".")
+                field_copy[0] = translate(field_copy[0])
+                if None not in field_copy:
+                    new_document[".".join(field_copy)] = value
+            document = new_document
             doc = model_cls(**document)
             # rewind all file-like's
             for attr, field in iteritems(model_cls._fields):

@@ -1,0 +1,16 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[packages]
+mongoengine = "*"
+eve = "*"
+blinker = "*"
+
+[dev-packages]
+flake8 = "*"
+black = "==20.8b1"
+
+[requires]
+python_version = "3.7"

@@ -4,3 +4,4 @@
   value of 'updated' field when performing actions on mongoengine side.
 * Documentation: advanced usage, extending and hacking
 * Test for subresources: PUT, PATCH, DELETE. Should be working, but tests missing.
+* Media operations are not tested
