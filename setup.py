@@ -2,12 +2,13 @@
 
 from setuptools import setup
 
+from eve_mongoengine import get_version
+
 setup(
     name="Eve-Mongoengine",
-    version="0.1",
+    version=get_version(),
     url="https://github.com/wangsha/eve-mongoengine",
-    author="Stanislav Heller",
-    author_email="heller.stanislav@gmail.com",
+    author="Wang Sha",
     description="An Eve extension for Mongoengine ODM support",
     packages=["eve_mongoengine"],
     zip_safe=False,

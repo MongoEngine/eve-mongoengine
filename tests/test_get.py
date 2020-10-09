@@ -13,6 +13,7 @@ from tests import (
     NonStructuredDoc,
     Inherited,
     SETTINGS,
+    SensitiveInfoDoc,
 )
 
 
@@ -261,3 +262,23 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         # cannot throw mongoengine.LookUpError!
         response = self.client.get("/inherited/")
         self.assertEqual(response.status_code, 200)
+
+    def test_exclude_sensitive_info(self):
+        SensitiveInfoDoc.objects.delete()
+        SensitiveInfoDoc(username="Alex", password="changeme").save()
+        response = self.client.get("/sensitiveinfodoc/")
+        items = response.json["_items"]
+        self.assertNotIn("password", list(items[0].keys()))
+        self.assertIn("extra_field", list(items[0].keys()))
+
+        response = self.client.get("/sensitiveinfodoc/%s" % items[0]["_id"])
+        item = response.json
+        self.assertNotIn("password", list(item.keys()))
+        self.assertIn("extra_field", list(item.keys()))
+
+    def test_custom_resource_name(self):
+        SensitiveInfoDoc.objects.delete()
+        SensitiveInfoDoc(username="Alex", password="changeme").save()
+        response = self.client.get("/user")
+        items = response.json["_items"]
+        self.assertTrue(len(items) > 0)

@@ -547,14 +547,14 @@ class MongoengineDataLayer(Mongo):
 
             ids = []
             for doc in doc_or_docs:
+                clean_doc(doc)
                 model = self._doc_to_model(resource, doc)
+                # Recompute ETag since MongoEngine can modify the data via
+                # save hooks.
                 model.save(write_concern=self._wc(resource))
                 ids.append(model.id)
                 doc.update(dict(model.to_mongo()))
                 doc[config.ID_FIELD] = model.id
-                # Recompute ETag since MongoEngine can modify the data via
-                # save hooks.
-                clean_doc(doc)
                 doc["_etag"] = document_etag(doc)
             return ids
         except NotUniqueError as e:
