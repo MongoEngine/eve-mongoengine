@@ -47,4 +47,4 @@ jobs:
         mongodb-version: 4.4
     - name: Run test
       run: |
-         python setup.py test
+         pipenv run python setup.py test

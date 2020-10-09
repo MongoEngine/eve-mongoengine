@@ -33,14 +33,9 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.3.0
         with:
-          mongodb-version: 4.2
+          mongodb-version: 4.4
       - name: Test
-        run: make test
-        env:
-          NOTIFICATION_MAILGUN_API_KEY: ${{ secrets.NOTIFICATION_MAILGUN_API_KEY }}
-          NOTIFICATION_ADMIN_EMAIL: ${{ secrets.NOTIFICATION_ADMIN_EMAIL }}
-          NOTIFICATION_ADMIN_PASSWORD: ${{ secrets.NOTIFICATION_ADMIN_PASSWORD }}
-          NOTIFICATION_MESSENGER_TWILIO_TOKEN: ${{ secrets.NOTIFICATION_MESSENGER_TWILIO_TOKEN }}
+        run:  pipenv run python setup.py test
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v2
         with:
