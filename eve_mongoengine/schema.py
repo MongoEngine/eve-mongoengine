@@ -125,7 +125,11 @@ class SchemaMapper(object):
             if fname in ("_id", "id"):
                 # default id field, do not insert it into schema
                 continue
-
+            if (
+                hasattr(model_cls, "eve_exclude_fields")
+                and fname in model_cls.eve_exclude_fields
+            ):
+                continue
             schema[fname] = cls.process_field(field, lowercase)
         return schema
 

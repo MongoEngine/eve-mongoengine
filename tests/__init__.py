@@ -1,4 +1,6 @@
 import json
+from functools import wraps
+
 from flask import Response as BaseResponse
 from mongoengine import *
 import mongoengine.signals
@@ -7,11 +9,13 @@ from eve import Eve
 from eve_mongoengine import EveMongoengine
 
 SETTINGS = {
-    "MONGO_HOST": "localhost",
-    "MONGO_PORT": 27017,
+    "MONGO_HOST": "mongodb://localhost:27017/eve_mongoengine_test?w=1&journal=false",
+    "MONGO_PORT": "",
     "MONGO_DBNAME": "eve_mongoengine_test",
     "DOMAIN": {"eve-mongoengine": {}},
-    "MERGE_NESTED_DOCUMENTS": False
+    "MERGE_NESTED_DOCUMENTS": False,
+    "RESOURCE_METHODS": ["GET", "POST", "DELETE"],
+    "ITEM_METHODS": ["GET", "PATCH", "PUT"]
     # 'LAST_UPDATED': 'updated_at',
     # 'DATE_CREATED': 'created_at',
     # 'ID_FIELD': '_id'
@@ -130,15 +134,30 @@ def update_b(sender, document):
 mongoengine.signals.pre_save.connect(update_b, sender=HawkeyDoc)
 
 
+class SensitiveInfoDoc(Document):
+    eve_exclude_fields = ["password"]
+    username = StringField()
+    password = StringField()
+
+    @staticmethod
+    def on_fetched_item(response):
+        response["extra_field"] = "a"
+
+    @staticmethod
+    def on_fetched_resource(response):
+        for item in response["_items"]:
+            item["extra_field"] = "a"
+
+
 class BaseTest(object):
     @classmethod
     def setUpClass(cls):
         SETTINGS["DOMAIN"] = {"eve-mongoengine": {}}
         app = Eve(settings=SETTINGS)
         app.debug = True
-        ext = EveMongoengine(app)
-        ext.add_model(
-            [
+        with app.app_context():
+            ext = EveMongoengine(app)
+            for Doc in (
                 SimpleDoc,
                 ComplexDoc,
                 LimitedDoc,
@@ -146,13 +165,28 @@ class BaseTest(object):
                 NonStructuredDoc,
                 Inherited,
                 HawkeyDoc,
-            ]
-        )
-        cls.ext = ext
-        cls.client = app.test_client()
-        cls.app = app
+                SensitiveInfoDoc,
+            ):
+                ext.add_model(
+                    Doc,
+                    resource_methods=["GET", "POST", "DELETE"],
+                    item_methods=["GET", "PATCH", "PUT", "DELETE"],
+                )
+            ext.add_model(SensitiveInfoDoc, resource_name="user")
+            cls.ext = ext
+            cls.client = app.test_client()
+            cls.app = app
 
     @classmethod
     def tearDownClass(cls):
         # deletes the whole test database
         cls.app.data.conn.drop_database(SETTINGS["MONGO_DBNAME"])
+
+
+def in_app_context(fn):
+    @wraps(fn)
+    def wrapper(self, *args, **kwargs):
+        with self.app.app_context():
+            return fn(self, *args, **kwargs)
+
+    return wrapper

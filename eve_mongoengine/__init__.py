@@ -12,25 +12,28 @@
     :license: BSD, see LICENSE for more details.
 """
 
-from datetime import datetime
-
 import mongoengine
 
-from ._compat import itervalues, iteritems
-from .datalayer import MongoengineDataLayer
 from .schema import SchemaMapper
+from .datalayer import MongoengineDataLayer
 from .struct import Settings
 from .validation import EveMongoengineValidator
+from ._compat import itervalues, iteritems
+from .utils import (
+    clean_doc,
+    get_utc_time,
+    fix_underscore,
+)
+from mongoengine import signals
+import json
+import hashlib
+from flask import current_app
+from eve.methods.common import resolve_document_etag
+from eve.utils import config
 
-__version__ = "0.0.9"
+from .__version__ import get_version
 
-
-def get_utc_time():
-    """
-    Returns current datetime in system-wide UTC format wichout microsecond
-    part.
-    """
-    return datetime.utcnow().replace(microsecond=0)
+__version__ = get_version()
 
 
 class EveMongoengine(object):
@@ -51,18 +54,24 @@ class EveMongoengine(object):
 
     This class tries hard to be extendable and hackable as possible, every
     possible value is either a method param (for IoC-DI) or class attribute,
-    which can be overwriten in subclass.
+    which can be overwritten in subclass.
     """
 
     #: Default HTTP methods allowed to manipulate with whole resources.
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_resource_methods = ["GET", "POST", "DELETE"]
+    default_resource_methods = ["GET"]
 
     #: Default HTTP methods allowed to manipulate with items (single records).
     #: These are assigned to settings of every registered model, if not given
     #: others.
-    default_item_methods = ["GET", "PATCH", "PUT", "DELETE"]
+    default_item_methods = ["GET"]
+
+    #: Default role for resource access
+    default_resource_role = "eve_resource_role"
+
+    #: Default role for item access
+    default_item_role = "eve_item_role"
 
     #: The class used as Eve validator, which is also one of Eve's constructor
     #: params. In EveMongoengine, we need to overwrite it. If extending, assign
@@ -89,15 +98,13 @@ class EveMongoengine(object):
 
     def _parse_config(self):
         # parse app config
-        config = self.app.config
-        try:
-            self.last_updated = config["LAST_UPDATED"]
-        except KeyError:
-            self.last_updated = "_updated"
-        try:
-            self.date_created = config["DATE_CREATED"]
-        except KeyError:
-            self.date_created = "_created"
+        self.last_updated = (
+            self.app.config.get("LAST_UPDATED", "_updated") or config.LAST_UPDATED
+        )
+        self.date_created = (
+            self.app.config.get("DATE_CREATED", "_created") or config.DATE_CREATED
+        )
+        self.etag = self.app.config.get("ETAG", "_etag") or config.ETAG
 
     def init_app(self, app):
         """
@@ -116,6 +123,9 @@ class EveMongoengine(object):
         self._parse_config()
         # overwrite default data layer to get proper mongoengine functionality
         app.data = self.datalayer_class(self)
+        # add self as an additional app field (if not, when you use the factory pattern the reference
+        # to the mongoengine object could get lost)
+        app.eve_mongoengine = self
 
     def _set_default_settings(self, settings):
         """
@@ -127,8 +137,30 @@ class EveMongoengine(object):
         if "item_methods" not in settings:
             # TODO: maybe get from self.app.supported_item_methods
             settings["item_methods"] = list(self.default_item_methods)
+        settings["allowed_roles"] = settings.get("allowed_roles", []) + [
+            self.default_resource_role
+        ]
+        settings["allowed_item_roles"] = settings.get("allowed_item_roles", []) + [
+            self.default_item_role
+        ]
 
-    def add_model(self, models, lowercase=True, **settings):
+    @staticmethod
+    def _fix_fields(sender, document, **kwargs):
+        """
+        Hook which updates all eve fields before every Document.save() call.
+        """
+        eve_fields = document._eve_fields
+        doc = json.loads(document.to_json())
+
+        # resolve_document_etag(doc, sender._eve_resource)
+        # document[eve_fields["etag"]] = doc[config.ETAG]
+
+        now = get_utc_time()
+        document[eve_fields["updated"]] = now
+        if "created" in kwargs and kwargs["created"]:
+            document[eve_fields["created"]] = now
+
+    def add_model(self, models, lowercase=True, resource_name=None, **settings):
         """
         Creates Eve settings for mongoengine model classes.
 
@@ -151,18 +183,28 @@ class EveMongoengine(object):
                     "Class '%s' is not a subclass of "
                     "mongoengine.Document." % model_cls.__name__
                 )
+
+            if resource_name is None:
+                resource_name = model_cls.__name__
+                if lowercase:
+                    resource_name = resource_name.lower()
+
+            # add new fields to model class to get proper Eve functionality
+            self.fix_model_class(model_cls)
+            signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
+            self.models[resource_name] = model_cls
+
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
-            resource_name = model_cls.__name__
-            if lowercase:
-                resource_name = resource_name.lower()
             # create resource settings
-            resource_settings = Settings({"schema": schema})
+            # FIXME: probably the ETAG should be created considering also dates
+            resource_settings = Settings(
+                {
+                    "schema": schema,
+                }
+            )
             resource_settings.update(settings)
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
-            # add new fields to model class to get proper Eve functionality
-            self.fix_model_class(model_cls)
-            self.models[resource_name] = model_cls
             # add sub-resource functionality for every ReferenceField
             subresources = self.schema_mapper_class.get_subresource_settings
             for registration in subresources(
@@ -170,16 +212,39 @@ class EveMongoengine(object):
             ):
                 self.app.register_resource(*registration)
                 self.models[registration[0]] = model_cls
+            model_cls._eve_resource = resource_name
+            # register eve database hooks, so that it would be possible
+            # to customize a fine-grain permission checking directly
+            # into the mongoengine model
+            for event in (
+                "on_fetched_resource",
+                "on_fetched_item",
+                "on_fetched_diffs",
+                "on_insert",
+                "on_inserted",
+                "on_replace",
+                "on_replaced",
+                "on_update",
+                "on_updated",
+                "on_delete_resource",
+                "on_deleted_resource",
+                "on_delete_resource_originals",
+                "on_delete_item",
+                "on_deleted_item",
+            ):
+                if hasattr(model_cls, event):
+                    eh = getattr(self.app, "{}_{}".format(event, resource_name))
+                    eh += getattr(model_cls, event)
 
     def fix_model_class(self, model_cls):
         """
         Internal method invoked during registering new model.
 
-        Adds necessary fields (updated and created) into model class
+        Adds necessary fields (updated, created and etag) into model class
         to ensure Eve's default functionality.
 
         This is a helper for correct manipulation with mongoengine documents
-        within Eve. Eve needs 'updated' and 'created' fields for it's own
+        within Eve. Eve needs 'updated', 'created' and 'etag' fields for it's own
         purpose, but we cannot ensure that they are present in the model
         class. And even if they are, they may be of other field type or
         missbehave.
@@ -188,10 +253,19 @@ class EveMongoengine(object):
                           :class:`mongoengine.Document`) to be fixed up.
         """
         date_field_cls = mongoengine.DateTimeField
+        etag_field_cls = mongoengine.StringField
 
+        # TODO: maybe yes, instead
         # field names have to be non-prefixed
-        last_updated_field_name = self.last_updated.lstrip("_")
-        date_created_field_name = self.date_created.lstrip("_")
+        last_updated_field_name = fix_underscore(self.last_updated)
+        date_created_field_name = fix_underscore(self.date_created)
+        etag_field_name = fix_underscore(self.etag)
+        model_cls._eve_fields = {
+            "updated": last_updated_field_name,
+            "created": date_created_field_name,
+            "etag": etag_field_name,
+        }
+
         new_fields = {
             # TODO: updating last_updated field every time when saved
             last_updated_field_name: date_field_cls(
@@ -200,6 +274,12 @@ class EveMongoengine(object):
             date_created_field_name: date_field_cls(
                 db_field=self.date_created, default=get_utc_time
             ),
+            etag_field_name: etag_field_cls(db_field=self.etag),
+        }
+        correct_field_types = {
+            last_updated_field_name: date_field_cls,
+            date_created_field_name: date_field_cls,
+            etag_field_name: etag_field_cls,
         }
 
         for attr_name, attr_value in iteritems(new_fields):
@@ -207,7 +287,7 @@ class EveMongoengine(object):
             # type (mongoengine.DateTimeField) and pass
             if attr_name in model_cls._fields:
                 attr_value = model_cls._fields[attr_name]
-                if not isinstance(attr_value, mongoengine.DateTimeField):
+                if not isinstance(attr_value, correct_field_types[attr_name]):
                     info = (attr_name, attr_value.__class__.__name__)
                     raise TypeError(
                         "Field '%s' is needed by Eve, but has"
@@ -233,23 +313,8 @@ class EveMongoengine(object):
             model_cls._db_field_map[attr_name] = attr_value.db_field
             model_cls._reverse_db_field_map[attr_value.db_field] = attr_name
 
-            # this is just copied from mongoengine and frankly, i just dont
+            # this is just copied from mongoengine and frankly, i just don't
             # have a clue, what it does...
             iterfields = itervalues(model_cls._fields)
             created = [(v.creation_counter, v.name) for v in iterfields]
             model_cls._fields_ordered = tuple(i[1] for i in sorted(created))
-
-
-def fix_last_updated(sender, document, **kwargs):
-    """
-    Hook which updates LAST_UPDATED field before every Document.save() call.
-    """
-    from eve.utils import config
-
-    if config.LAST_UPDATED is not None:
-        field_name = config.LAST_UPDATED.lstrip("_")
-        if field_name in document:
-            document[field_name] = get_utc_time()
-
-
-mongoengine.signals.pre_save.connect(fix_last_updated)

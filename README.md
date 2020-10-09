@@ -1,9 +1,9 @@
-eve-mongoengine 0.0.9
+eve-mongoengine
 =====================
 
-[![Build Status](https://travis-ci.org/hellerstanislav/eve-mongoengine.png?branch=master)](https://travis-ci.org/hellerstanislav/eve-mongoengine/)
-[![Requirements Status](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements.png?branch=master)](https://requires.io/github/hellerstanislav/eve-mongoengine/requirements/?branch=master)
+![CI](https://github.com/wangsha/eve-mongoengine/workflows/CI/badge.svg)
 
+This is an active fork of the original [Eve-Mongoengine](https://github.com/MongoEngine/eve-mongoengine)
 [Eve-Mongoengine](http://eve-mongoengine.readthedocs.org/en/latest/) is an
 [Eve](https://github.com/nicolaiarocci/eve/) extension, which enables
 Mongoengine ODM models to be used as eve schema. If you use mongoengine
