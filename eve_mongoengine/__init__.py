@@ -59,12 +59,6 @@ class EveMongoengine(object):
     #: others.
     default_item_methods = ["GET"]
 
-    #: Default role for resource access
-    default_resource_role = "eve_resource_role"
-
-    #: Default role for item access
-    default_item_role = "eve_item_role"
-
     #: The class used as Eve validator, which is also one of Eve's constructor
     #: params. In EveMongoengine, we need to overwrite it. If extending, assign
     #: only subclasses of :class:`EveMongoengineValidator`.
@@ -129,12 +123,8 @@ class EveMongoengine(object):
         if "item_methods" not in settings:
             # TODO: maybe get from self.app.supported_item_methods
             settings["item_methods"] = list(self.default_item_methods)
-        settings["allowed_roles"] = settings.get("allowed_roles", []) + [
-            self.default_resource_role
-        ]
-        settings["allowed_item_roles"] = settings.get("allowed_item_roles", []) + [
-            self.default_item_role
-        ]
+        settings["allowed_roles"] = settings.get("allowed_roles", [])
+        settings["allowed_item_roles"] = settings.get("allowed_item_roles", [])
 
     @staticmethod
     def _fix_fields_bulk(sender, documents, **kwargs):
