@@ -48,3 +48,10 @@ jobs:
     - name: Run test
       run: |
          make test
+    - name: bumpversion
+      if: endsWith(github.ref, '/master')
+      run: |
+        git config --global user.name "github"
+        git config --global user.email "noreply@github.com"
+        make bumpversion
+        git push origin master --tags

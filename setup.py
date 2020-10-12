@@ -15,5 +15,5 @@ setup(
     test_suite="tests",
     include_package_data=True,
     platforms="any",
-    install_requires=["Eve", "Mongoengine"],
+    install_requires=["Eve", "Mongoengine", "blinker"],
 )
