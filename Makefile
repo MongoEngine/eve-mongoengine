@@ -43,7 +43,7 @@ lint:
 	pipenv run black --check .
 
 test: lint
-	python setup.py test
+	python -m unittest
 
 debug:
 	echo tag is $(COMMIT_MSG)
