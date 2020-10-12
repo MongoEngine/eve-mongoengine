@@ -3,7 +3,7 @@ import json
 import time
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc, HawkeyDoc
 
 
 def post_simple_item(f):

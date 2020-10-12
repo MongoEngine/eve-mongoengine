@@ -45,3 +45,9 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         # verify etag
         resp = self.client.get("/hawkeydoc/%s" % resp_json["_id"])
         self.assertEqual(etag, resp.get_json()[config.ETAG])
+
+        # test bulk insert signal
+        HawkeyDoc.objects.insert([HawkeyDoc(a="a")])
+        queryset = HawkeyDoc.objects()
+        for document in queryset:
+            self.assertNotEqual(document.created_at, None)
