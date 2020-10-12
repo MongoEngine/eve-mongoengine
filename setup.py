@@ -2,11 +2,11 @@
 
 from setuptools import setup
 
-from eve_mongoengine import get_version
+__version__ = "1.1.0"
 
 setup(
     name="Eve-Mongoengine",
-    version=get_version(),
+    version=__version__,
     url="https://github.com/wangsha/eve-mongoengine",
     author="Wang Sha",
     description="An Eve extension for Mongoengine ODM support",
@@ -15,5 +15,5 @@ setup(
     test_suite="tests",
     include_package_data=True,
     platforms="any",
-    install_requires=["Eve", "Mongoengine", "Blinker"],
+    install_requires=["Eve", "Mongoengine", "blinker"],
 )

@@ -13,27 +13,19 @@
 """
 
 import mongoengine
+from eve.utils import config
+from mongoengine import signals
 
-from .schema import SchemaMapper
-from .datalayer import MongoengineDataLayer
-from .struct import Settings
-from .validation import EveMongoengineValidator
 from ._compat import itervalues, iteritems
+from .datalayer import MongoengineDataLayer
+from .schema import SchemaMapper
+from .struct import Settings
 from .utils import (
     clean_doc,
     get_utc_time,
     fix_underscore,
 )
-from mongoengine import signals
-import json
-import hashlib
-from flask import current_app
-from eve.methods.common import resolve_document_etag
-from eve.utils import config
-
-from .__version__ import get_version
-
-__version__ = get_version()
+from .validation import EveMongoengineValidator
 
 
 class EveMongoengine(object):
@@ -145,19 +137,28 @@ class EveMongoengine(object):
         ]
 
     @staticmethod
+    def _fix_fields_bulk(sender, documents, **kwargs):
+        for document in documents:
+            eve_fields = document._eve_fields
+
+            now = get_utc_time()
+            document[eve_fields["updated"]] = now
+            if document.id is None:
+                document[eve_fields["created"]] = now
+
+    @staticmethod
     def _fix_fields(sender, document, **kwargs):
         """
         Hook which updates all eve fields before every Document.save() call.
         """
         eve_fields = document._eve_fields
-        doc = json.loads(document.to_json())
 
         # resolve_document_etag(doc, sender._eve_resource)
         # document[eve_fields["etag"]] = doc[config.ETAG]
 
         now = get_utc_time()
         document[eve_fields["updated"]] = now
-        if "created" in kwargs and kwargs["created"]:
+        if document.id is None:
             document[eve_fields["created"]] = now
 
     def add_model(self, models, lowercase=True, resource_name=None, **settings):
@@ -192,6 +193,7 @@ class EveMongoengine(object):
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
             signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
+            signals.pre_bulk_insert.connect(self._fix_fields_bulk, sender=model_cls)
             self.models[resource_name] = model_cls
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)

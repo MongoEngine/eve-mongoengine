@@ -28,8 +28,6 @@ jobs:
         run: pip3 install pipenv
       - name: install package
         run: pipenv update --dev
-        env:
-          REGISTRY_AUTH: ${{ secrets.REGISTRY_AUTH }}
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.3.0
         with:

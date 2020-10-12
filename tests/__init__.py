@@ -15,10 +15,10 @@ SETTINGS = {
     "DOMAIN": {"eve-mongoengine": {}},
     "MERGE_NESTED_DOCUMENTS": False,
     "RESOURCE_METHODS": ["GET", "POST", "DELETE"],
-    "ITEM_METHODS": ["GET", "PATCH", "PUT"]
-    # 'LAST_UPDATED': 'updated_at',
-    # 'DATE_CREATED': 'created_at',
-    # 'ID_FIELD': '_id'
+    "ITEM_METHODS": ["GET", "PATCH", "PUT"],
+    # "LAST_UPDATED": "updated_at",
+    # "DATE_CREATED": "created_at",
+    # 'ID_FIELD': '_id'',
 }
 
 
@@ -125,6 +125,8 @@ class HawkeyDoc(Document):
     # document with save() hooked
     a = StringField()
     b = StringField()
+    created_at = DateTimeField(required=True)
+    updated_at = DateTimeField(required=True)
 
 
 def update_b(sender, document):
@@ -164,7 +166,6 @@ class BaseTest(object):
                 FieldsDoc,
                 NonStructuredDoc,
                 Inherited,
-                HawkeyDoc,
                 SensitiveInfoDoc,
             ):
                 ext.add_model(

@@ -17,10 +17,15 @@ import traceback
 from distutils.version import LooseVersion
 from uuid import UUID
 
+from eve.exceptions import ConfigException
 from eve.io.mongo import MongoJSONEncoder, Mongo
 from eve.utils import config, debug_error_message, validate_filters, document_etag
-from eve.exceptions import ConfigException
-from mongoengine import __version__, DoesNotExist, FileField, NotUniqueError
+from mongoengine import (
+    __version__,
+    DoesNotExist,
+    FileField,
+    BulkWriteError,
+)
 from mongoengine.connection import get_db, connect
 
 # --- Third Party ---
@@ -58,7 +63,7 @@ def clean_doc(doc):
     #     if isinstance(value, (list, dict)) and not value:
     #         del doc[attr]
     doc.pop("_etag", None)
-
+    doc.pop("_cls", None)
     return doc
 
 
@@ -82,6 +87,7 @@ class PymongoQuerySet(object):
                 #     if isinstance(value, (list, dict)) and not value:
                 #         del doc[attr]
                 doc = doc.to_mongo()
+                doc = clean_doc(doc)
                 yield doc
 
         return iterate(self)
@@ -541,23 +547,23 @@ class MongoengineDataLayer(Mongo):
     def insert(self, resource, doc_or_docs):
         """Called when performing POST request"""
         datasource, filter_, _, _ = self._datasource_ex(resource)
+        cls = self.cls_map[resource]
         try:
             if not isinstance(doc_or_docs, list):
                 doc_or_docs = [doc_or_docs]
 
             ids = []
+            models = []
             for doc in doc_or_docs:
                 clean_doc(doc)
                 model = self._doc_to_model(resource, doc)
-                # Recompute ETag since MongoEngine can modify the data via
-                # save hooks.
-                model.save(write_concern=self._wc(resource))
-                ids.append(model.id)
-                doc.update(dict(model.to_mongo()))
-                doc[config.ID_FIELD] = model.id
-                doc["_etag"] = document_etag(doc)
+                models.append(model)
+            ids = cls.objects.insert(
+                models, load_bulk=False, write_concern=self._wc(resource)
+            )
+
             return ids
-        except NotUniqueError as e:
+        except BulkWriteError as e:
             # most likely a 'w' (write_concern) setting which needs an
             # existing ReplicaSet which doesn't exist. Please note that the
             # update will actually succeed (a new ETag will be needed).

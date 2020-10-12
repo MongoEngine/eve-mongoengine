@@ -40,11 +40,18 @@ jobs:
         echo github ref: ${{ github.ref }}
         echo pipenv-cache hit: ${{ steps.cache-pipenv.outputs.cache-hit }}
     - name: install package
-      run: pipenv install --dev
+      run: make config
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.3.0
       with:
         mongodb-version: 4.4
     - name: Run test
       run: |
-         pipenv run python setup.py test
+         make test
+    - name: bumpversion
+      if: endsWith(github.ref, '/master')
+      run: |
+        git config --global user.name "github"
+        git config --global user.email "noreply@github.com"
+        make bumpversion
+        git push origin master --tags

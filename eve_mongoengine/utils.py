@@ -1,6 +1,6 @@
-from ._compat import itervalues, iteritems
 from datetime import datetime
-from flask import current_app
+
+from ._compat import iteritems
 
 
 def clean_doc(doc):
