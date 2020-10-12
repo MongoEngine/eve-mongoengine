@@ -28,4 +28,8 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">3",
+    package_data={
+        # If any package contains *.txt or *.rst files, include them:
+        '': ['*.md'],
+    },
 )
