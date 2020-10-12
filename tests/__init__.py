@@ -123,8 +123,9 @@ class NonStructuredDoc(Document):
 
 class HawkeyDoc(Document):
     # document with save() hooked
-    a = StringField()
+    a = StringField(required=True)
     b = StringField()
+    c = ReferenceField(SimpleDoc, reverse_delete_rule=CASCADE)
     created_at = DateTimeField(required=True)
     updated_at = DateTimeField(required=True)
 

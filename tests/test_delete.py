@@ -1,6 +1,8 @@
 import unittest
 from eve.utils import config
-from tests import BaseTest, SimpleDoc, ComplexDoc
+
+from eve_mongoengine import get_utc_time
+from tests import BaseTest, SimpleDoc, ComplexDoc, HawkeyDoc
 
 
 class TestHttpDelete(BaseTest, unittest.TestCase):
@@ -89,3 +91,19 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
         self.assertEqual(json_data[config.ITEMS], [])
         # cleanup
         s.delete()
+
+    def test_reveres_delete_rule(self):
+        now = get_utc_time()
+        HawkeyDoc.objects.delete()
+        h = HawkeyDoc(c=self._id, a="a", created_at=now, updated_at=now).save()
+
+        # delete subresources
+        url = "/simpledoc/%s" % self._id
+        response = self.delete(url)
+        self.assertEqual(response.status_code, 204)
+
+        count = HawkeyDoc.objects.count()
+        self.assertEqual(count, 0)
+
+        # cleanup
+        HawkeyDoc.objects.delete()

@@ -51,3 +51,6 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         queryset = HawkeyDoc.objects()
         for document in queryset:
             self.assertNotEqual(document.created_at, None)
+
+        # cleanup
+        HawkeyDoc.objects.delete()
