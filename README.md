@@ -2,12 +2,14 @@ eve-mongoengine2
 =====================
 
 ![CI](https://github.com/wangsha/eve-mongoengine/workflows/CI/badge.svg)
-![Pypi](https://img.shields.io/pypi/v/eve.svg)
+[![PyPI version](https://badge.fury.io/py/Eve-Mongoengine2.svg)](https://badge.fury.io/py/Eve-Mongoengine2)
 This is an active fork of the original [Eve-Mongoengine](https://github.com/MongoEngine/eve-mongoengine)
 
 Differences from the original repo:
 * compatible with latest [eve](https://github.com/pyeve/eve) release.
 * automatically integrate eve hooks with mongoengine methods. Inspired by a fork https://github.com/liuq/eve-mongoengine
+* added capability to skip certain fields during schema construction.
+* added capability to costimize resource name.
 
 [Eve-Mongoengine](http://eve-mongoengine.readthedocs.org/en/latest/) is an
 [Eve](https://github.com/pyeve/eve) extension, which enables
@@ -108,6 +110,25 @@ When you register more than one model at time, you need to encapsulate all model
 ext.add_model([Person, Car, House, Dog])
 ```
 
+**Skip sensitive fields and eve hooks integration**
+
+You can mark the model with `eve_exclude_fields` to skip certain model fields during schema construction. If you define eve hooks in mongoengine document, it will be automatically integrated.
+```python
+class SensitiveInfoDoc(Document):
+    eve_exclude_fields = ["password"]
+    username = StringField()
+    password = StringField()
+
+    @staticmethod
+    def on_fetched_item(response):
+        response["extra_field"] = "a"
+
+    @staticmethod
+    def on_fetched_resource(response):
+        for item in response["_items"]:
+            item["extra_field"] = "a"
+```
+
 **HTTP Methods**
 
 By default, all HTTP methods are allowed for registered classes:
@@ -170,6 +191,7 @@ issue or create pull request with fix.
 
 **Warning**: Be aware, that when using `QuerySet.update()` method, `LAST_UPDATED` field *WILL NOT*
 be updated!
+
 
 
 Options for mongoengine
