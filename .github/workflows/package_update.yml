@@ -31,7 +31,7 @@ jobs:
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.3.0
         with:
-          mongodb-version: 4.4
+          mongodb-version: latest
       - name: Test
         run:  pipenv run python setup.py test
       - name: Create Pull Request
