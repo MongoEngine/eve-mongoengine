@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-from eve_mongoengine import get_version
+from eve_mongoengine.__version__ import get_version
 
 setup(
     name="Eve-Mongoengine",

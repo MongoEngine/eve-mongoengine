@@ -13,25 +13,19 @@
 """
 
 import mongoengine
+from eve.utils import config
 
-from .schema import SchemaMapper
-from .datalayer import MongoengineDataLayer
-from .struct import Settings
-from .validation import EveMongoengineValidator
+from .__version__ import get_version
 from ._compat import itervalues, iteritems
+from .datalayer import MongoengineDataLayer
+from .schema import SchemaMapper
+from .struct import Settings
 from .utils import (
     clean_doc,
     get_utc_time,
     fix_underscore,
 )
-from mongoengine import signals
-import json
-import hashlib
-from flask import current_app
-from eve.methods.common import resolve_document_etag
-from eve.utils import config
-
-from .__version__ import get_version
+from .validation import EveMongoengineValidator
 
 __version__ = get_version()
 

@@ -18,8 +18,8 @@ from eve.io.mongo.validation import Validator
 from flask import current_app as app
 from mongoengine import ValidationError, FileField
 
-from eve_mongoengine.utils import get_utc_time
 from eve_mongoengine._compat import iteritems
+from eve_mongoengine.utils import get_utc_time
 
 
 class EveMongoengineValidator(Validator):

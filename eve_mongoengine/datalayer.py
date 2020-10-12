@@ -17,14 +17,13 @@ import traceback
 from distutils.version import LooseVersion
 from uuid import UUID
 
+from eve.exceptions import ConfigException
 from eve.io.mongo import MongoJSONEncoder, Mongo
 from eve.utils import config, debug_error_message, validate_filters, document_etag
-from eve.exceptions import ConfigException
 from mongoengine import (
     __version__,
     DoesNotExist,
     FileField,
-    NotUniqueError,
     BulkWriteError,
 )
 from mongoengine.connection import get_db, connect
