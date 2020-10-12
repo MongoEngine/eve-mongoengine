@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-__version__ = "1.4.0"
+__version__ = "1.5.0"
 
 
 LONG_DESCRIPTION = None
