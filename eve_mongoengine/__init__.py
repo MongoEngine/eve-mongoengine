@@ -15,7 +15,6 @@
 import mongoengine
 from eve.utils import config
 
-from .__version__ import get_version
 from ._compat import itervalues, iteritems
 from .datalayer import MongoengineDataLayer
 from .schema import SchemaMapper
@@ -26,8 +25,6 @@ from .utils import (
     fix_underscore,
 )
 from .validation import EveMongoengineValidator
-
-__version__ = get_version()
 
 
 class EveMongoengine(object):

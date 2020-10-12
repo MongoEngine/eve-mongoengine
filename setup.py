@@ -2,11 +2,11 @@
 
 from setuptools import setup
 
-from eve_mongoengine.__version__ import get_version
+__version__ = "0.1.0"
 
 setup(
     name="Eve-Mongoengine",
-    version=get_version(),
+    version=__version__,
     url="https://github.com/wangsha/eve-mongoengine",
     author="Wang Sha",
     description="An Eve extension for Mongoengine ODM support",
