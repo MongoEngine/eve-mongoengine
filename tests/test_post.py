@@ -80,6 +80,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 201)
+
         response = self.client.post(
             "/limiteddoc/",
             data='{"a": "hi", "b": "ho"}',
@@ -88,7 +89,8 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         json_data = response.get_json()
         self.assertTrue(
-            "Tried to save duplicate unique keys" in json_data[config.ERROR]["message"]
+            "E11000 duplicate key error collection"
+            in json_data[config.ERROR]["message"]
         )
 
     def test_post_invalid_schema_min_max(self):
@@ -147,19 +149,3 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         resp_json = response.get_json()
         self.assertEqual(len(resp_json[config.ITEMS]), 1)
         self.assertEqual(resp_json[config.ITEMS][0]["l"], ["x", "y", "z"])
-
-    def test_post_with_pre_save_hook(self):
-        # resulting etag has to match (etag must be computed from
-        # modified data, not from original!)
-        data = {"a": "hey"}
-        response = self.client.post(
-            "/hawkeydoc/", data='{"a": "hey"}', content_type="application/json"
-        )
-        self.assertEqual(response.status_code, 201)
-        resp_json = response.get_json()
-        self.assertEqual(resp_json[config.STATUS], "OK")
-        etag = resp_json[config.ETAG]
-
-        # verify etag
-        resp = self.client.get("/hawkeydoc/%s" % resp_json["_id"])
-        self.assertEqual(etag, resp.get_json()[config.ETAG])

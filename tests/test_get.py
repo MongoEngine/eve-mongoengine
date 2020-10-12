@@ -271,6 +271,11 @@ class TestHttpGet(BaseTest, unittest.TestCase):
         self.assertNotIn("password", list(items[0].keys()))
         self.assertIn("extra_field", list(items[0].keys()))
 
+        response = self.client.get('/sensitiveinfodoc/?projection={"password": 1}')
+        items = response.json["_items"]
+        self.assertNotIn("password", list(items[0].keys()))
+        self.assertIn("extra_field", list(items[0].keys()))
+
         response = self.client.get("/sensitiveinfodoc/%s" % items[0]["_id"])
         item = response.json
         self.assertNotIn("password", list(item.keys()))

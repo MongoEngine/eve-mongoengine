@@ -144,22 +144,6 @@ class EveMongoengine(object):
             self.default_item_role
         ]
 
-    @staticmethod
-    def _fix_fields(sender, document, **kwargs):
-        """
-        Hook which updates all eve fields before every Document.save() call.
-        """
-        eve_fields = document._eve_fields
-        doc = json.loads(document.to_json())
-
-        # resolve_document_etag(doc, sender._eve_resource)
-        # document[eve_fields["etag"]] = doc[config.ETAG]
-
-        now = get_utc_time()
-        document[eve_fields["updated"]] = now
-        if "created" in kwargs and kwargs["created"]:
-            document[eve_fields["created"]] = now
-
     def add_model(self, models, lowercase=True, resource_name=None, **settings):
         """
         Creates Eve settings for mongoengine model classes.
@@ -191,12 +175,10 @@ class EveMongoengine(object):
 
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
-            signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
             self.models[resource_name] = model_cls
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
             # create resource settings
-            # FIXME: probably the ETAG should be created considering also dates
             resource_settings = Settings(
                 {
                     "schema": schema,

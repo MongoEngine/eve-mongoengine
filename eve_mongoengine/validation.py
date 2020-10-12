@@ -18,6 +18,7 @@ from eve.io.mongo.validation import Validator
 from flask import current_app as app
 from mongoengine import ValidationError, FileField
 
+from eve_mongoengine.utils import get_utc_time
 from eve_mongoengine._compat import iteritems
 
 
@@ -33,6 +34,15 @@ class EveMongoengineValidator(Validator):
         schema and if it does not fail, repeats the same against mongoengine
         validation machinery.
         """
+
+        # fix timestamp
+        if app.config["DATE_CREATED"] in list(self.schema.keys()):
+            now = get_utc_time()
+            if not update:
+                document[app.config["DATE_CREATED"]] = document.get(
+                    app.config["DATE_CREATED"], now
+                )
+            document[app.config["LAST_UPDATED"]] = now
 
         # call default eve's validator
         if not Validator.validate(self, document, schema, update, context):

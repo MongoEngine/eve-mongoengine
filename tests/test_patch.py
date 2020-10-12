@@ -15,6 +15,7 @@ def post_simple_item(f):
         )
         json_data = response.get_json()
         self._id = json_data[config.ID_FIELD]
+
         self.url = "/simpledoc/%s" % self._id  # json_data[config.ID_FIELD]
         # response = self.client.get(self.url).get_json()
         self.etag = json_data[config.ETAG]
