@@ -7,7 +7,7 @@ __version__ = "1.3.0"
 
 LONG_DESCRIPTION = None
 try:
-    LONG_DESCRIPTION = open('README.md').read()
+    LONG_DESCRIPTION = open("README.md").read()
 except:
     pass
 
