@@ -55,6 +55,7 @@ jobs:
         git config --global user.email "noreply@github.com"
         make bumpversion
         git push origin master --tags
+        python setup.py sdist
     - name: Publish a Python distribution to PyPI
       if: endsWith(github.ref, '/master')
       uses: pypa/gh-action-pypi-publish@master

@@ -1,11 +1,16 @@
-eve-mongoengine
+eve-mongoengine2
 =====================
 
 ![CI](https://github.com/wangsha/eve-mongoengine/workflows/CI/badge.svg)
 
 This is an active fork of the original [Eve-Mongoengine](https://github.com/MongoEngine/eve-mongoengine)
+
+Differences from the original repo:
+* compatible with latest [eve](https://github.com/pyeve/eve) release.
+* automatically integrate eve hooks with mongoengine methods. Inspired by a fork https://github.com/liuq/eve-mongoengine
+
 [Eve-Mongoengine](http://eve-mongoengine.readthedocs.org/en/latest/) is an
-[Eve](https://github.com/nicolaiarocci/eve/) extension, which enables
+[Eve](https://github.com/pyeve/eve) extension, which enables
 Mongoengine ODM models to be used as eve schema. If you use mongoengine
 in your application and simultaneously want to use eve, instead of writing schema
 again in cerberus format, you can use this extension, which takes your mongoengine
@@ -16,12 +21,12 @@ models and auto-transforms it into creberus schema.
 Install
 -------
 Simple installation using pip:
-`pip install eve-mongoengine`
+`pip install eve-mongoengine2`
 
 It loads all dependencies as well.
 
 For development use virtualenv and editable copy of repisotory:
-`pip install -e git+https://github.com/hellerstanislav/eve-mongoengine#egg=eve-mongoengine`
+`pip install -e git+https://github.com/wangsha/eve-mongoengine#egg=eve-mongoengine`
 
 Features
 --------
