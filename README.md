@@ -198,5 +198,5 @@ Limitations
 * You can use FileField (tested) and ImageField (not tested yet), but
   operation with files handles Eve's GridFS layer, not mongoengine's
   GridFSProxy!
-* Tested only on python 2.7 and 3.3.
+* Tested only on python 3.7.
 
