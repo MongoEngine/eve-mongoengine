@@ -2,7 +2,7 @@ eve-mongoengine2
 =====================
 
 ![CI](https://github.com/wangsha/eve-mongoengine/workflows/CI/badge.svg)
-
+![Pypi](https://img.shields.io/pypi/v/eve.svg)
 This is an active fork of the original [Eve-Mongoengine](https://github.com/MongoEngine/eve-mongoengine)
 
 Differences from the original repo:
