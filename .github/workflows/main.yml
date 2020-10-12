@@ -44,7 +44,7 @@ jobs:
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.3.0
       with:
-        mongodb-version: 4.4
+        mongodb-version: latest
     - name: Run test
       run: |
          make test
@@ -55,3 +55,11 @@ jobs:
         git config --global user.email "noreply@github.com"
         make bumpversion
         git push origin master --tags
+    - name: Publish a Python distribution to PyPI
+      if: endsWith(github.ref, '/master')
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        user: __token__
+        password: ${{ secrets.pypi_password }}
+      env:
+        PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}

@@ -5,7 +5,7 @@ from setuptools import setup
 __version__ = "1.1.0"
 
 setup(
-    name="Eve-Mongoengine",
+    name="Eve-Mongoengine2",
     version=__version__,
     url="https://github.com/wangsha/eve-mongoengine",
     author="Wang Sha",
