@@ -1,11 +1,7 @@
 import unittest
 from copy import deepcopy
 
-from eve import Eve
-from mongoengine import Document, StringField, ListField, IntField
-
 from eve_mongoengine.struct import Settings
-from eve_mongoengine import EveMongoengine
 
 
 class TestSettingsDict(unittest.TestCase):

@@ -1,4 +1,5 @@
 import unittest
+
 from mongoengine import Document, StringField, queryset_manager
 
 from eve_mongoengine import EveMongoengine

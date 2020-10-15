@@ -1,18 +1,10 @@
-from datetime import datetime
 import unittest
-import json
 
-from eve_mongoengine import EveMongoengine
 from eve.utils import config
+
 from tests import (
     BaseTest,
-    Eve,
-    SimpleDoc,
-    ComplexDoc,
-    LimitedDoc,
-    WrongDoc,
     HawkeyDoc,
-    SETTINGS,
 )
 
 

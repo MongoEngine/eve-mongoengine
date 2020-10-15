@@ -18,7 +18,7 @@ from uuid import UUID
 
 from eve.exceptions import ConfigException
 from eve.io.mongo import MongoJSONEncoder, Mongo
-from eve.utils import config, debug_error_message, validate_filters, document_etag
+from eve.utils import config, debug_error_message, validate_filters
 from mongoengine import (
     __version__,
     DoesNotExist,

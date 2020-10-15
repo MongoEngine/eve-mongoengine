@@ -1,23 +1,18 @@
 import json
-import uuid
 import unittest
 
 from eve.exceptions import SchemaException
 from eve.utils import config
 
+from eve_mongoengine._compat import iteritems, long
 from tests import (
     BaseTest,
-    Eve,
     SimpleDoc,
     ComplexDoc,
     Inner,
-    LimitedDoc,
-    WrongDoc,
     FieldsDoc,
     PrimaryKeyDoc,
-    SETTINGS,
 )
-from eve_mongoengine._compat import iteritems, long
 
 
 class TestFields(BaseTest, unittest.TestCase):

@@ -1,15 +1,11 @@
-import uuid
 import unittest
-from operator import attrgetter
+
 from eve_mongoengine import EveMongoengine
 from tests import (
     BaseTest,
     Eve,
     SimpleDoc,
     ComplexDoc,
-    Inner,
-    LimitedDoc,
-    WrongDoc,
     NonStructuredDoc,
     Inherited,
     SETTINGS,

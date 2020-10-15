@@ -1,6 +1,8 @@
 import json
 import unittest
+
 from eve.utils import config
+
 from tests import BaseTest, SimpleDoc, ComplexDoc
 
 

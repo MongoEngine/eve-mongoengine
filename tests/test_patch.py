@@ -1,13 +1,12 @@
-import datetime
-
-from bson import ObjectId
 import json
 import time
 import unittest
+
+from bson import ObjectId
 from eve.utils import config
 
 from eve_mongoengine.datalayer import MongoengineJsonEncoder
-from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc, HawkeyDoc
+from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc
 
 
 def post_simple_item(f):

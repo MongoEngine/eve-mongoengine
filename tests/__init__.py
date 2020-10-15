@@ -1,10 +1,10 @@
 import json
 from functools import wraps
 
-from flask import Response as BaseResponse
-from mongoengine import *
 import mongoengine.signals
 from eve import Eve
+from flask import Response as BaseResponse
+from mongoengine import *
 
 from eve_mongoengine import EveMongoengine
 

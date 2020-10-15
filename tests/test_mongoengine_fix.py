@@ -1,13 +1,11 @@
-from datetime import datetime
 import unittest
+from datetime import datetime
 
+from eve.utils import str_to_date, config
 from mongoengine import Document, StringField, IntField
 
-from eve.exceptions import SchemaException
-from eve.utils import str_to_date, config
 from eve_mongoengine import EveMongoengine
-
-from tests import BaseTest, Eve, SimpleDoc, ComplexDoc, LimitedDoc, WrongDoc, SETTINGS
+from tests import Eve, SimpleDoc, WrongDoc, SETTINGS
 
 
 class TestMongoengineFix(unittest.TestCase):
