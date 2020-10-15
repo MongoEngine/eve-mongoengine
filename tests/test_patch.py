@@ -159,7 +159,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     @post_complex_item
     def test_patch_empty_list(self):
         """
-        Sadly, in default mode (use_atomic_update_for_patch=True) this raises
+        Sadly, in default mode (use_document_save_for_patch=True) this raises
         error and there is no way (except for patching eve) to workaround this
         without doing another mongo fetch (and break atomicity), which is the
         way how it is done.
@@ -279,9 +279,9 @@ class TestHttpPatchUsingSaveMethod(TestHttpPatch):
     @classmethod
     def setUpClass(cls):
         BaseTest.setUpClass()
-        cls.app.data.mongoengine_options["use_atomic_update_for_patch"] = False
+        cls.app.data.mongoengine_options["use_document_save_for_patch"] = True
 
     @classmethod
     def tearDownClass(cls):
         BaseTest.tearDownClass()
-        cls.app.data.mongoengine_options["use_atomic_update_for_patch"] = True
+        cls.app.data.mongoengine_options["use_document_save_for_patch"] = False

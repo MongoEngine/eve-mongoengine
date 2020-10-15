@@ -218,10 +218,11 @@ class MongoengineUpdater(object):
         """
         opt = self.datalayer.mongoengine_options
 
-        if opt.get("use_atomic_update_for_patch", 1):
-            res = self._update_using_update_one(resource, id_, updates)
-        else:
+        if opt.get("use_document_save_for_patch", True):
             res = self._update_using_save(resource, id_, updates)
+        else:
+            res = self._update_using_update_one(resource, id_, updates)
+
         return res
 
 
@@ -239,12 +240,12 @@ class MongoengineDataLayer(Mongo):
     default_queryset = "objects"
 
     #: Options for usage of mongoengine layer.
-    #: use_atomic_update_for_patch - when set to True, Mongoengine layer will
+    #: use_document_save_for_patch - when set to True, Mongoengine layer will
     #: use update_one() method (which is atomic) for updating. But then you
     #: will loose your pre/post-save hooks. When you set this to False, for
     #: updating will be used save() method.
     mongoengine_options = {
-        "use_atomic_update_for_patch": True,
+        "use_document_save_for_patch": False,
         "use_document_save_for_insert": False,
         "use_document_delete_for_delete": False,
     }

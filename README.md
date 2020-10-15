@@ -9,7 +9,7 @@ Differences from the original repo:
 * compatible with latest [eve](https://github.com/pyeve/eve) release.
 * automatically integrate eve hooks with mongoengine methods. Inspired by a fork https://github.com/liuq/eve-mongoengine
 * added capability to skip certain fields during schema construction.
-* added capability to costimize resource name.
+* added capability to customize resource name.
 
 [Eve-Mongoengine](http://eve-mongoengine.readthedocs.org/en/latest/) is an
 [Eve](https://github.com/pyeve/eve) extension, which enables
@@ -129,6 +129,7 @@ class SensitiveInfoDoc(Document):
             item["extra_field"] = "a"
 ```
 
+    
 **HTTP Methods**
 
 By default, all HTTP methods are allowed for registered classes:
@@ -200,13 +201,20 @@ Every insert/update (POST, PUT) goes through mongoengine's `Document.save()` met
 but PATCH method uses as default method atomic `mongoengine.QuerySet.update_one()`.
 So if you have some hook bound to `save()` method, you loose it in this way.
 But you have an option to use `save()` method in `PATCH` requests in exchange
-for one database fetch, so it is relatively slower. If you want to use this feature,
-set this options in data layer::
+for one database fetch, so it is relatively slower. The same applies to insertion and deletion. If
+ you want to use this feature, set this options in data layer::
 
     app = Eve()
     ext = EveMongoengine(app)
     #: this switches from using QuerySet.update_one() to Document.save()
-    app.data.mongoengine_options['use_atomic_update_for_patch'] = False
+    app.data.mongoengine_options['use_document_save_for_patch'] = True
+    
+    #: this switches from using  cls.objects.insert() to Document.save() for each document
+    app.data.mongoengine_options['use_document_save_for_insert'] = True
+    
+    #: this switches from using  cls.objects(filter).delete() to Document.delete() for each document
+    app.data.mongoengine_options['use_document_delete_for_delete'] = True
+    
     ext.add_model(Person)
 
 
@@ -220,5 +228,5 @@ Limitations
 * You can use FileField (tested) and ImageField (not tested yet), but
   operation with files handles Eve's GridFS layer, not mongoengine's
   GridFSProxy!
-* Tested only on python 3.7.
+* Tested only on python 3.7/3.8
 
