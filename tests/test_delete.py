@@ -107,3 +107,15 @@ class TestHttpDelete(BaseTest, unittest.TestCase):
 
         # cleanup
         HawkeyDoc.objects.delete()
+
+
+class TestHttpDeleteUsingSaveMethod(TestHttpDelete):
+    @classmethod
+    def setUpClass(cls):
+        BaseTest.setUpClass()
+        cls.app.data.mongoengine_options["use_document_delete_for_delete"] = True
+
+    @classmethod
+    def tearDownClass(cls):
+        BaseTest.tearDownClass()
+        cls.app.data.mongoengine_options["use_document_delete_for_delete"] = False

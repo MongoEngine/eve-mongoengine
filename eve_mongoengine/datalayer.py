@@ -9,7 +9,6 @@
     :license: BSD, see LICENSE for more details.
 """
 
-import json
 
 # builtin
 import sys
@@ -25,10 +24,12 @@ from mongoengine import (
     DoesNotExist,
     FileField,
     BulkWriteError,
+    NotUniqueError,
 )
 from mongoengine.connection import get_db, connect
 
 # --- Third Party ---
+from pymongo.errors import DuplicateKeyError
 
 MONGOENGINE_VERSION = LooseVersion(__version__)
 
@@ -53,16 +54,10 @@ def _itemize(maybe_dict):
 
 def clean_doc(doc):
     """
-    Cleans empty datastructures from mongoengine document (model instance)
-    and remove any _etag fields.
-
-    The purpose of this is to get proper etag.
+    clean helper fields
+    # https://stackoverflow.com/questions/13824569/mongoengine-types-and-cls-fields
     """
-    # MPI-1220#2
-    # for attr, value in iteritems(dict(doc)):
-    #     if isinstance(value, (list, dict)) and not value:
-    #         del doc[attr]
-    doc.pop("_etag", None)
+
     doc.pop("_cls", None)
     return doc
 
@@ -146,33 +141,12 @@ class MongoengineUpdater(object):
     ODM layer.
 
     Updates are managed in this class cecause sometimes things need to get
-    drity and there would be unnecessary 'helper' methods in the main class
+    dirty and there would be unnecessary 'helper' methods in the main class
     MongoengineDataLayer causing namespace pollution.
     """
 
     def __init__(self, datalayer):
         self.datalayer = datalayer
-        self._etag_doc = None
-        self.install_etag_fixer()
-
-    def install_etag_fixer(self):
-        """
-        Fixes ETag value returned by PATCH responses.
-        """
-
-        def fix_patch_etag(resource, request, payload):
-            if self._etag_doc is None:
-                return
-            # make doc from which the etag will be computed
-            etag_doc = clean_doc(self._etag_doc)
-            # load the response back agagin from json
-            d = json.loads(payload.get_data(as_text=True))
-            # compute new etag
-            d[config.ETAG] = document_etag(etag_doc)
-            payload.set_data(json.dumps(d))
-
-        # register post PATCH hook into current application
-        self.datalayer.app.on_post_PATCH += fix_patch_etag
 
     def _transform_updates_to_mongoengine_kwargs(self, resource, updates):
         """
@@ -210,13 +184,8 @@ class MongoengineUpdater(object):
         kwargs = self._transform_updates_to_mongoengine_kwargs(resource, updates)
         qset = lambda: self.datalayer.cls_map.objects(resource)
         qry = qset()(id=id_)
-        qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
-        if self._has_empty_list(updates):
-            # Fix Etag when updating to empty list
-            model = qset()(id=id_).get()
-            self._etag_doc = dict(model.to_mongo())
-        else:
-            self._etag_doc = None
+        res = qry.update_one(write_concern=self.datalayer._wc(resource), **kwargs)
+        return res
 
     def _update_document(self, doc, updates):
         """
@@ -239,8 +208,7 @@ class MongoengineUpdater(object):
         model = self.datalayer.cls_map.objects(resource)(id=id_).get()
         self._update_document(model, updates)
         model.save(write_concern=self.datalayer._wc(resource))
-        # Fix Etag when updating to empty list
-        self._etag_doc = dict(model.to_mongo())
+        return model
 
     def update(self, resource, id_, updates):
         """
@@ -250,13 +218,12 @@ class MongoengineUpdater(object):
         """
         opt = self.datalayer.mongoengine_options
 
-        updates.pop("_etag", None)
-
-        if opt.get("use_atomic_update_for_patch", 1):
-            self._update_using_update_one(resource, id_, updates)
+        if opt.get("use_document_save_for_patch", True):
+            res = self._update_using_save(resource, id_, updates)
         else:
-            self._update_using_save(resource, id_, updates)
-        return self._etag_doc
+            res = self._update_using_update_one(resource, id_, updates)
+
+        return res
 
 
 class MongoengineDataLayer(Mongo):
@@ -273,11 +240,15 @@ class MongoengineDataLayer(Mongo):
     default_queryset = "objects"
 
     #: Options for usage of mongoengine layer.
-    #: use_atomic_update_for_patch - when set to True, Mongoengine layer will
+    #: use_document_save_for_patch - when set to True, Mongoengine layer will
     #: use update_one() method (which is atomic) for updating. But then you
     #: will loose your pre/post-save hooks. When you set this to False, for
     #: updating will be used save() method.
-    mongoengine_options = {"use_atomic_update_for_patch": True}
+    mongoengine_options = {
+        "use_document_save_for_patch": False,
+        "use_document_save_for_insert": False,
+        "use_document_delete_for_delete": False,
+    }
 
     def __init__(self, ext):
         """
@@ -558,9 +529,14 @@ class MongoengineDataLayer(Mongo):
                 clean_doc(doc)
                 model = self._doc_to_model(resource, doc)
                 models.append(model)
-            ids = cls.objects.insert(
-                models, load_bulk=False, write_concern=self._wc(resource)
-            )
+            if self.mongoengine_options["use_document_save_for_insert"]:
+                for model in models:
+                    model.save()
+                    ids.append(model.id)
+            else:
+                ids = cls.objects.insert(
+                    models, load_bulk=False, write_concern=self._wc(resource)
+                )
 
             return ids
         except BulkWriteError as e:
@@ -573,12 +549,20 @@ class MongoengineDataLayer(Mongo):
                     "pymongo.errors.OperationFailure: %s" % e
                 ),
             )
+        except (DuplicateKeyError, NotUniqueError) as e:
+            abort(
+                400,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
         except Exception as exc:
             self._handle_exception(exc)
 
     def update(self, resource, id_, updates, *args, **kwargs):
         """Called when performing PATCH request."""
         try:
+
             return self.updater.update(resource, id_, updates)
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
@@ -618,7 +602,11 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
-            qry.delete(write_concern=self._wc(resource))
+            if self.mongoengine_options["use_document_delete_for_delete"]:
+                for doc in qry:
+                    doc.delete()
+            else:
+                qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
             abort(

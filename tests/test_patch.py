@@ -1,8 +1,12 @@
+import datetime
+
 from bson import ObjectId
 import json
 import time
 import unittest
 from eve.utils import config
+
+from eve_mongoengine.datalayer import MongoengineJsonEncoder
 from tests import BaseTest, SimpleDoc, ComplexDoc, FieldsDoc, HawkeyDoc
 
 
@@ -87,19 +91,29 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     @post_simple_item
     def test_patch_overwrite_subset(self):
         # test what was really updated
+        encoder = MongoengineJsonEncoder()
         raw = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
+        time.sleep(1)
         response = self.do_patch(data='{"a": "greg"}')
         self.assert_correct_etag(response)
         expected = dict(raw)
         expected["a"] = "greg"
+        for key in [config.ETAG, config.LAST_UPDATED]:
+            expected[key] = response.json[key]
         real = SimpleDoc._get_collection().find_one({"_id": ObjectId(self._id)})
-        self.assertDictEqual(real, expected)
+        self.assertEqual(encoder.encode(real), encoder.encode(expected))
         # test if GET response returns corrent response
         response = self.client.get(self.url).get_json()
         self.assertIn("a", response)
         self.assertEqual(response["a"], "greg")
         self.assertIn("b", response)
         self.assertEqual(response["b"], 23)
+
+        # cleanup
+        headers = [("If-Match", response[config.ETAG])]
+        response = self.client.delete("/simpledoc/%s" % self._id, headers=headers)
+        assert response.status_code == 204
+        self.assertEqual(SimpleDoc.objects.count(), 0)
 
     @post_complex_item
     def test_patch_dict_field(self):
@@ -142,12 +156,10 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(doc.l, ["n"])
         self.assertEqual(doc.i.a, "hello")
 
-    '''
-    etag has error
     @post_complex_item
     def test_patch_empty_list(self):
         """
-        Sadly, in default mode (use_atomic_update_for_patch=True) this raises
+        Sadly, in default mode (use_document_save_for_patch=True) this raises
         error and there is no way (except for patching eve) to workaround this
         without doing another mongo fetch (and break atomicity), which is the
         way how it is done.
@@ -169,7 +181,6 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(doc.l, [])
         self.assertEqual(doc.d, {})
         self.assertEqual(doc.i.a, "hello")
-    '''
 
     @post_complex_item
     def test_patch_list_in_list(self):
@@ -191,11 +202,14 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
 
     def test_patch_subresource(self):
         # create new resource and subresource
+        SimpleDoc.objects.delete()
+        ComplexDoc.objects.delete()
         s = SimpleDoc(a="Answer to everything", b=42).save()
         d = ComplexDoc(l=["a", "b"], n=999, r=s).save()
 
         response = self.client.get("/simpledoc/%s/complexdoc/%s" % (s.id, d.id))
         etag = response.get_json()[config.ETAG]
+        self.assertNotIn("_cls", list(response.json.keys()))
         headers = [("If-Match", etag)]
 
         # patch document
@@ -209,6 +223,7 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         resp_json = response.get_json()
+        self.assertNotIn("_cls", list(response.json.keys()))
         self.assertEqual(resp_json[config.STATUS], "OK")
 
         # check, if really edited
@@ -218,8 +233,11 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
         self.assertEqual(json_data["n"], 999)
 
         # cleanup
+        headers = [("If-Match", json_data[config.ETAG])]
+        response = self.client.delete("/complexdoc/%s" % d.id, headers=headers)
+        assert response.status_code == 204
+        self.assertEqual(ComplexDoc.objects.count(), 0)
         s.delete()
-        d.delete()
 
     def test_patch_field_with_different_dbfield(self):
         # tests patching field whith has mongoengine's db_field specified
@@ -261,9 +279,9 @@ class TestHttpPatchUsingSaveMethod(TestHttpPatch):
     @classmethod
     def setUpClass(cls):
         BaseTest.setUpClass()
-        cls.app.data.mongoengine_options["use_atomic_update_for_patch"] = False
+        cls.app.data.mongoengine_options["use_document_save_for_patch"] = True
 
     @classmethod
     def tearDownClass(cls):
         BaseTest.tearDownClass()
-        cls.app.data.mongoengine_options["use_atomic_update_for_patch"] = True
+        cls.app.data.mongoengine_options["use_document_save_for_patch"] = False

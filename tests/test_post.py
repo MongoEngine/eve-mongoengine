@@ -149,3 +149,15 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         resp_json = response.get_json()
         self.assertEqual(len(resp_json[config.ITEMS]), 1)
         self.assertEqual(resp_json[config.ITEMS][0]["l"], ["x", "y", "z"])
+
+
+class TestHttpPostUsingSaveMethod(TestHttpPost):
+    @classmethod
+    def setUpClass(cls):
+        BaseTest.setUpClass()
+        cls.app.data.mongoengine_options["use_document_save_for_insert"] = True
+
+    @classmethod
+    def tearDownClass(cls):
+        BaseTest.tearDownClass()
+        cls.app.data.mongoengine_options["use_document_save_for_insert"] = False

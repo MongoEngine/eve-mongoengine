@@ -1,32 +1,11 @@
+os: linux
+dist: focal
 language: python
 services: mongodb
 python:
-- '2.7'
-- '3.3'
-- '3.4'
 - '3.7'
-- pypy
-- pypy3
-env:
-- EVE=1.1.3 MONGOENGINE=0.20.0
-- EVE=1.1.3 MONGOENGINE=dev
-- EVE=prod MONGOENGINE=0.20.0
-- EVE=prod MONGOENGINE=dev
-- EVE=dev MONGOENGINE=0.20.0
-- EVE=dev MONGOENGINE=dev
-matrix:
-  allow_failures:
-  - python: pypy3
-  fast_finish: true
+- '3.8'
 install:
-- sudo apt-get install python-dev python3-dev
-- if [[ $EVE == 'dev' ]]; then travis_retry pip install https://github.com/nicolaiarocci/eve/tarball/develop;
-  elif [[ $EVE == 'prod' ]]; then travis_retry pip install https://github.com/nicolaiarocci/eve/tarball/master;
-  else travis_retry pip install eve==$EVE;
-  fi
-- if [[ $MONGOENGINE == 'dev' ]]; then travis_retry pip install https://github.com/MongoEngine/mongoengine/tarball/master;
-  else travis_retry pip install mongoengine==$MONGOENGINE;
-  fi
-- travis_retry python setup.py install
+- make config
 script:
-- travis_retry python setup.py test
+- travis_retry make test
