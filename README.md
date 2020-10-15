@@ -2,7 +2,13 @@ eve-mongoengine2
 =====================
 
 ![CI](https://github.com/wangsha/eve-mongoengine/workflows/CI/badge.svg)
-[![PyPI version](https://badge.fury.io/py/Eve-Mongoengine2.svg)](https://badge.fury.io/py/Eve-Mongoengine2)
+![PyPI](https://img.shields.io/pypi/v/eve-mongoengine2)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/eve-mongoengine2)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/eve-mongoengine2)
+![GitHub issues](https://img.shields.io/github/issues/wangsha/eve-mongoengine)
+![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/wangsha/eve-mongoengine)
+![PyPI - License](https://img.shields.io/pypi/l/eve-mongoengine2)
+
 This is an active fork of the original [Eve-Mongoengine](https://github.com/MongoEngine/eve-mongoengine)
 
 Differences from the original repo:
