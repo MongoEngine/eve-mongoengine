@@ -122,8 +122,9 @@ class SchemaMapper(object):
                 # This attribute is injected into model in EveMongoengine's
                 # fix_model_class() method.
                 continue
-            if fname in ("_id", "id"):
+            if fname in ("_id", "id", "_cls", "_types"):
                 # default id field, do not insert it into schema
+                # https://stackoverflow.com/questions/13824569/mongoengine-types-and-cls-fields
                 continue
             if (
                 hasattr(model_cls, "eve_exclude_fields")
