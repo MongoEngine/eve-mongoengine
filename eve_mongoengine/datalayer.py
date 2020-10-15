@@ -24,10 +24,12 @@ from mongoengine import (
     DoesNotExist,
     FileField,
     BulkWriteError,
+    NotUniqueError,
 )
 from mongoengine.connection import get_db, connect
 
 # --- Third Party ---
+from pymongo.errors import DuplicateKeyError
 
 MONGOENGINE_VERSION = LooseVersion(__version__)
 
@@ -241,7 +243,11 @@ class MongoengineDataLayer(Mongo):
     #: use update_one() method (which is atomic) for updating. But then you
     #: will loose your pre/post-save hooks. When you set this to False, for
     #: updating will be used save() method.
-    mongoengine_options = {"use_atomic_update_for_patch": True}
+    mongoengine_options = {
+        "use_atomic_update_for_patch": True,
+        "use_document_save_for_insert": False,
+        "use_document_delete_for_delete": False,
+    }
 
     def __init__(self, ext):
         """
@@ -522,15 +528,27 @@ class MongoengineDataLayer(Mongo):
                 clean_doc(doc)
                 model = self._doc_to_model(resource, doc)
                 models.append(model)
-            ids = cls.objects.insert(
-                models, load_bulk=False, write_concern=self._wc(resource)
-            )
+            if self.mongoengine_options["use_document_save_for_insert"]:
+                for model in models:
+                    model.save()
+                    ids.append(model.id)
+            else:
+                ids = cls.objects.insert(
+                    models, load_bulk=False, write_concern=self._wc(resource)
+                )
 
             return ids
         except BulkWriteError as e:
             # most likely a 'w' (write_concern) setting which needs an
             # existing ReplicaSet which doesn't exist. Please note that the
             # update will actually succeed (a new ETag will be needed).
+            abort(
+                400,
+                description=debug_error_message(
+                    "pymongo.errors.OperationFailure: %s" % e
+                ),
+            )
+        except (DuplicateKeyError, NotUniqueError) as e:
             abort(
                 400,
                 description=debug_error_message(
@@ -583,7 +601,11 @@ class MongoengineDataLayer(Mongo):
                 qry = self.cls_map.objects(resource)
             else:
                 qry = self.cls_map.objects(resource)(__raw__=filter_)
-            qry.delete(write_concern=self._wc(resource))
+            if self.mongoengine_options["use_document_delete_for_delete"]:
+                for doc in qry:
+                    doc.delete()
+            else:
+                qry.delete(write_concern=self._wc(resource))
         except pymongo.errors.OperationFailure as e:
             # see comment in :func:`insert()`.
             abort(
