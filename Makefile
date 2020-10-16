@@ -41,6 +41,7 @@ typecheck:
 
 lint:
 	pipenv run black --check .
+	pipenv run flake8 eve_mongoengine
 
 test: lint
 	pipenv run python -m unittest

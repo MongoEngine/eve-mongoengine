@@ -14,14 +14,12 @@
 
 import mongoengine
 from eve.utils import config
-from mongoengine import signals
 
 from ._compat import itervalues, iteritems
 from .datalayer import MongoengineDataLayer
 from .schema import SchemaMapper
 from .struct import Settings
 from .utils import (
-    clean_doc,
     get_utc_time,
     fix_underscore,
 )
@@ -126,31 +124,6 @@ class EveMongoengine(object):
         settings["allowed_roles"] = settings.get("allowed_roles", [])
         settings["allowed_item_roles"] = settings.get("allowed_item_roles", [])
 
-    @staticmethod
-    def _fix_fields_bulk(sender, documents, **kwargs):
-        for document in documents:
-            eve_fields = document._eve_fields
-
-            now = get_utc_time()
-            document[eve_fields["updated"]] = now
-            if document.id is None:
-                document[eve_fields["created"]] = now
-
-    @staticmethod
-    def _fix_fields(sender, document, **kwargs):
-        """
-        Hook which updates all eve fields before every Document.save() call.
-        """
-        eve_fields = document._eve_fields
-
-        # resolve_document_etag(doc, sender._eve_resource)
-        # document[eve_fields["etag"]] = doc[config.ETAG]
-
-        now = get_utc_time()
-        document[eve_fields["updated"]] = now
-        if document.id is None:
-            document[eve_fields["created"]] = now
-
     def add_model(self, models, lowercase=True, resource_name=None, **settings):
         """
         Creates Eve settings for mongoengine model classes.
@@ -182,8 +155,6 @@ class EveMongoengine(object):
 
             # add new fields to model class to get proper Eve functionality
             self.fix_model_class(model_cls)
-            signals.pre_save_post_validation.connect(self._fix_fields, sender=model_cls)
-            signals.pre_bulk_insert.connect(self._fix_fields_bulk, sender=model_cls)
             self.models[resource_name] = model_cls
 
             schema = self.schema_mapper_class.create_schema(model_cls, lowercase)
@@ -247,7 +218,6 @@ class EveMongoengine(object):
         date_field_cls = mongoengine.DateTimeField
         etag_field_cls = mongoengine.StringField
 
-        # TODO: maybe yes, instead
         # field names have to be non-prefixed
         last_updated_field_name = fix_underscore(self.last_updated)
         date_created_field_name = fix_underscore(self.date_created)
@@ -259,7 +229,6 @@ class EveMongoengine(object):
         }
 
         new_fields = {
-            # TODO: updating last_updated field every time when saved
             last_updated_field_name: date_field_cls(
                 db_field=self.last_updated, default=get_utc_time
             ),

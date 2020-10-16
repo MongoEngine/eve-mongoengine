@@ -6,7 +6,7 @@ from eve import Eve
 from flask import Response as BaseResponse
 from mongoengine import *
 
-from eve_mongoengine import EveMongoengine
+from eve_mongoengine import EveMongoengine, get_utc_time
 
 SETTINGS = {
     "MONGO_HOST": "mongodb://localhost:27017/eve_mongoengine_test?w=1&journal=false",
@@ -128,6 +128,13 @@ class HawkeyDoc(Document):
     c = ReferenceField(SimpleDoc, reverse_delete_rule=CASCADE)
     created_at = DateTimeField(required=True)
     updated_at = DateTimeField(required=True)
+
+    def validate(self, clean=True):
+        now = get_utc_time()
+        if not self.created_at:
+            self.created_at = now
+        self.updated_at = now
+        return super().validate(clean)
 
 
 def update_b(sender, document):

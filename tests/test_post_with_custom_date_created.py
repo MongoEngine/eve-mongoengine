@@ -1,7 +1,9 @@
 import unittest
+from datetime import timedelta
 
 from eve.utils import config
 
+from eve_mongoengine import get_utc_time
 from tests import (
     BaseTest,
     HawkeyDoc,
@@ -25,6 +27,7 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         )
         # resulting etag has to match (etag must be computed from
         # modified data, not from original!)
+        HawkeyDoc.objects.delete()
         data = {"a": "hey"}
         response = self.client.post(
             "/hawkeydoc/", data='{"a": "hey"}', content_type="application/json"
@@ -38,11 +41,22 @@ class TestHttpPost(BaseTest, unittest.TestCase):
         resp = self.client.get("/hawkeydoc/%s" % resp_json["_id"])
         self.assertEqual(etag, resp.get_json()[config.ETAG])
 
-        # test bulk insert signal
-        HawkeyDoc.objects.insert([HawkeyDoc(a="a")])
+        HawkeyDoc(a="a").save()
         queryset = HawkeyDoc.objects()
         for document in queryset:
             self.assertNotEqual(document.created_at, None)
 
+        # test bulk insert no signal
+        docs = HawkeyDoc.objects.insert([HawkeyDoc(a="a")])
+        for document in docs:
+            self.assertEqual(document.created_at, None)
+
         # cleanup
         HawkeyDoc.objects.delete()
+
+    def test_client_supplied_dates(self):
+        yesterday = get_utc_time() - timedelta(days=1)
+        doc = HawkeyDoc(a="hello", created_at=yesterday, updated_at=yesterday).save(
+            validate=False
+        )
+        self.assertEqual(doc.updated_at, yesterday)
