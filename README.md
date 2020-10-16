@@ -189,12 +189,27 @@ Person._fields.keys() # equals ['name', 'age', 'updated', 'created']
 If you already have these fields in your model, Eve will probably scream at you, that it's not
 possible to have these fields in schema.
 
-**Auto-updating `LAST_UPDATED` field**
+**No auto-updating `LAST_UPDATED` field without http request**
 
 If you update your document using mongoengine model (i.e. by calling `save()`, the `updated` field
-will be automatically updated to current time. This is because there is a mongoengine's
-`pre_save_post_validation` hook bound to `save()`. If somebody gets hurt by this hook, fill in
-issue or create pull request with fix.
+will NOT be automatically updated to current time. If you want this behavior, please implement
+ the hook yourself. Example:
+ ```python
+class HawkeyDoc(Document):
+    # document with save() hooked
+    a = StringField(required=True)
+    b = StringField()
+    c = ReferenceField(SimpleDoc, reverse_delete_rule=CASCADE)
+    created_at = DateTimeField(required=True)
+    updated_at = DateTimeField(required=True)
+
+    def validate(self, clean=True):
+        now = get_utc_time()
+        if not self.created_at:
+            self.created_at = now
+        self.updated_at = now
+        return super().validate(clean)
+```
 
 **Warning**: Be aware, that when using `QuerySet.update()` method, `LAST_UPDATED` field *WILL NOT*
 be updated!

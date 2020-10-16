@@ -13,9 +13,10 @@
 # builtin
 import sys
 import traceback
+import pymongo
 from distutils.version import LooseVersion
 from uuid import UUID
-
+from flask import abort
 from eve.exceptions import ConfigException
 from eve.io.mongo import MongoJSONEncoder, Mongo
 from eve.utils import config, debug_error_message, validate_filters
@@ -31,16 +32,10 @@ from mongoengine.connection import get_db, connect
 # --- Third Party ---
 from pymongo.errors import DuplicateKeyError
 
-MONGOENGINE_VERSION = LooseVersion(__version__)
-
-
-# Misc
-from flask import abort
-import pymongo
-
-
 # Python3 compatibility
 from ._compat import iteritems
+
+MONGOENGINE_VERSION = LooseVersion(__version__)
 
 
 def _itemize(maybe_dict):
@@ -410,23 +405,7 @@ class MongoengineDataLayer(Mongo):
 
         count = None
         if perform_count:
-            try:
-                count = qry.count()
-            except:
-                # fallback to deprecated method. this might happen when the query
-                # includes operators not supported by count_documents(). one
-                # documented use-case is when we're running on mongo 3.4 and below,
-                # which does not support $expr ($expr must replace $where # in
-                # count_documents()).
-
-                # 1. Mongo 3.6+; $expr: pass
-                # 2. Mongo 3.6+; $where: pass (via fallback)
-                # 3. Mongo 3.4; $where: pass (via fallback)
-                # 4. Mongo 3.4; $expr: fail (operator not supported by db)
-
-                # See: http://api.mongodb.com/python/current/api/pymongo/collection.html
-                # #pymongo.collection.Collection.count
-                pass
+            count = qry.count()
         return PymongoQuerySet(qry), count
 
     def find_one(

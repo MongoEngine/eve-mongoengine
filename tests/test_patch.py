@@ -262,16 +262,27 @@ class TestHttpPatch(BaseTest, unittest.TestCase):
     @post_simple_item
     def test_update_date_consistency(self):
         # tests if _updated is really updated when PATCHing resource
-        updated = self.client.get(self.url).get_json()[config.LAST_UPDATED]
+        item = self.client.get(self.url).get_json()
+        updated1 = item[config.LAST_UPDATED]
         time.sleep(1)
         s = SimpleDoc.objects.get()
-        updated_before_patch = s.updated
+        updated_before_db_patch = s.updated
         s.a = "bob"
         s.save()
-        updated_after_patch = s.updated
-        self.assertNotEqual(updated_before_patch, updated_after_patch)
-        delta = updated_after_patch - updated_before_patch
-        self.assertGreater(delta.seconds, 0)
+        updated_after_db_patch = s.updated
+        # mongoengine doesn't modify default document, timestamp will update only via RESTFUL
+        # operation
+        self.assertEqual(updated_before_db_patch, updated_after_db_patch)
+
+        item2 = self.do_patch(data='{"a": "greg", "b": 300}').json
+        updated2 = item2[config.LAST_UPDATED]
+        self.assertNotEqual(updated1, updated2)
+        self.assertNotEqual(item[config.ETAG], item2[config.ETAG])
+
+        doc = SimpleDoc(
+            a="hello", created=updated_before_db_patch, updated=updated_before_db_patch
+        ).save(validate=False)
+        self.assertEqual(doc.updated, updated_before_db_patch)
 
 
 class TestHttpPatchUsingSaveMethod(TestHttpPatch):
