@@ -239,6 +239,10 @@ for one database fetch, so it is relatively slower. The same applies to insertio
     ext.add_model(Person)
 
 
+Skip sub resource registration
+-----------------------
+If you want to skip register sub-resources, set `REGISTER_SUB_RESOURCE=True` in settings.
+
 Limitations
 -----------
 

@@ -16,6 +16,7 @@ SETTINGS = {
     "MERGE_NESTED_DOCUMENTS": False,
     "RESOURCE_METHODS": ["GET", "POST", "DELETE"],
     "ITEM_METHODS": ["GET", "PATCH", "PUT"],
+    "REGISTER_SUB_RESOURCE": True
     # "LAST_UPDATED": "updated_at",
     # "DATE_CREATED": "created_at",
     # 'ID_FIELD': '_id'',
