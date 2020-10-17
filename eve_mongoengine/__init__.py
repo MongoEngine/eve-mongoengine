@@ -169,13 +169,14 @@ class EveMongoengine(object):
             # register to the app
             self.app.register_resource(resource_name, resource_settings)
             # add sub-resource functionality for every ReferenceField
-            subresources = self.schema_mapper_class.get_subresource_settings
-            for registration in subresources(
-                model_cls, resource_name, resource_settings, lowercase
-            ):
-                self.app.register_resource(*registration)
-                self.models[registration[0]] = model_cls
-            model_cls._eve_resource = resource_name
+            if self.app.config.get("REGISTER_SUB_RESOURCE", True):
+                subresources = self.schema_mapper_class.get_subresource_settings
+                for registration in subresources(
+                    model_cls, resource_name, resource_settings, lowercase
+                ):
+                    self.app.register_resource(*registration)
+                    self.models[registration[0]] = model_cls
+                model_cls._eve_resource = resource_name
             # register eve database hooks, so that it would be possible
             # to customize a fine-grain permission checking directly
             # into the mongoengine model
