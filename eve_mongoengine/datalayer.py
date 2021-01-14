@@ -254,6 +254,7 @@ class MongoengineDataLayer(Mongo):
         # get authentication info
         username = ext.app.config.get("MONGO_USERNAME", None)
         password = ext.app.config.get("MONGO_PASSWORD", None)
+        auth_source = ext.app.config.get("MONGO_AUTH_SOURCE", None)
         auth = (username, password)
         if any(auth) and not all(auth):
             raise ConfigException("Must set both USERNAME and PASSWORD " "or neither")
@@ -271,7 +272,7 @@ class MongoengineDataLayer(Mongo):
         self.driver.db = get_db()
         # authenticate
         if any(auth):
-            self.driver.db.authenticate(username, password)
+            self.driver.db.authenticate(username, password, source=auth_source)
         # helper object for managing PATCHes, which are a bit dirty
         self.updater = MongoengineUpdater(self)
         # map resource -> Mongoengine class
