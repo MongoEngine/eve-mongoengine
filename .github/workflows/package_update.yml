@@ -5,7 +5,12 @@ on:
     branches: [ master ]
   schedule:
     - cron: '0 1 * * 1'  #every monday 1:00 am UTC time
-
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
 
 jobs:
   # This workflow contains a single job called "build"
@@ -19,7 +24,7 @@ jobs:
       - name: Cache python3
         uses: actions/cache@v1
         with:
-          path: /opt/hostedtoolcache/Python/3.7.6
+          path: /opt/hostedtoolcache/Python
           key: ${{ runner.os }}-python
       - uses: actions/setup-python@v1
         with:
@@ -35,7 +40,7 @@ jobs:
       - name: Test
         run:  pipenv run python setup.py test
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v2
+        uses: peter-evans/create-pull-request@v3
         with:
           base: master
       - name: notify slack
