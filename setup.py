@@ -2,7 +2,7 @@
 
 from setuptools import setup
 
-__version__ = "1.30.0"
+__version__ = "1.31.0"
 
 
 with open("README.md", "r") as fh:
