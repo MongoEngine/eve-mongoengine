@@ -2,7 +2,7 @@ name: 'GitHub Actions update package'
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   schedule:
     - cron: '0 1 * * 1'  #every monday 1:00 am UTC time
   workflow_dispatch:
@@ -28,7 +28,7 @@ jobs:
           key: ${{ runner.os }}-python
       - uses: actions/setup-python@v1
         with:
-          python-version: '3.7'
+          python-version: '3.9'
       - name: install pipenv
         run: pip3 install pipenv
       - name: install package
@@ -42,7 +42,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:
-          base: master
+          base: main
       - name: notify slack
         uses: 8398a7/action-slack@v3
         with:

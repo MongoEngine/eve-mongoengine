@@ -1,4 +1,4 @@
-.. Eve-Mongoengine documentation master file, created by
+.. Eve-Mongoengine documentation main file, created by
    sphinx-quickstart on Fri Nov  1 09:05:09 2013.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.

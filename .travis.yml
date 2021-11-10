@@ -3,7 +3,7 @@ dist: focal
 language: python
 services: mongodb
 python:
-- '3.7'
+- '3.9'
 - '3.8'
 install:
 - make config
