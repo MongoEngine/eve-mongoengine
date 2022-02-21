@@ -2,9 +2,9 @@ name: 'GitHub Actions update package'
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   schedule:
-    - cron: '0 1 * * 1'  #every monday 1:00 am UTC time
+    - cron: '0 1 1 * *'  #1st day of every month 1:00 am UTC time
   workflow_dispatch:
     inputs:
       logLevel:
@@ -21,28 +21,35 @@ jobs:
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
-      - name: Cache python3
-        uses: actions/cache@v1
+      - uses: actions/setup-python@v2
         with:
-          path: /opt/hostedtoolcache/Python
-          key: ${{ runner.os }}-python
-      - uses: actions/setup-python@v1
-        with:
-          python-version: '3.7'
+          python-version: '3.9'
       - name: install pipenv
         run: pip3 install pipenv
       - name: install package
-        run: pipenv update --dev
+        run: |
+          rm Pipfile.lock
+          pipenv update --dev
+      - name: Check files using the black formatter
+        uses: rickstaa/action-black@v1
+        id: action_black
+        with:
+          black_args: "."
+      - name: Annotate diff changes using reviewdog
+        if: steps.action_black.outputs.is_formatted == 'true'
+        uses: reviewdog/action-suggester@v1
+        with:
+          tool_name: blackfmt
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          base: main
       - name: Start MongoDB
-        uses: supercharge/mongodb-github-action@1.3.0
+        uses: supercharge/mongodb-github-action@1.6.0
         with:
           mongodb-version: latest
       - name: Test
         run:  pipenv run python setup.py test
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v3
-        with:
-          base: master
       - name: notify slack
         uses: 8398a7/action-slack@v3
         with:

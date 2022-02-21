@@ -21,6 +21,36 @@ jobs:
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+    - name: linting
+      uses: rickstaa/action-black@v1
+      with:
+        black_args: ". --check"
+    - name: detect-secrets
+      uses: reviewdog/action-detect-secrets@master
+      with:
+        github_token: ${{ secrets.github_token }}
+        reporter: github-pr-review # Change reporter.
+    - name: misspell
+      uses: reviewdog/action-misspell@v1
+      with:
+        github_token: ${{ secrets.github_token }}
+        locale: "US"
+    - uses: reviewdog/action-alex@v1
+      with:
+        github_token: ${{ secrets.github_token }}
+        # Change reviewdog reporter if you need [github-pr-check,github-check,github-pr-review].
+        reporter: github-pr-review
+        # Change reporter level if you need.
+        # GitHub Status Check won't become failure with warning.
+        level: warning
+    - uses: reviewdog/action-black@v2
+      with:
+       github_token: ${{ secrets.github_token }}
+        # Change reviewdog reporter if you need [github-pr-check, github-check].
+       reporter: github-pr-check
+         # Change reporter level if you need.
+        # GitHub Status Check won't become failure with a warning.
+       level: warning
     - uses: actions/setup-python@v2
       with:
         python-version: '3.7' 
@@ -31,7 +61,7 @@ jobs:
       uses: actions/cache@v1
       with:
         path: ~/.local/share/virtualenvs
-        key: ${{ runner.os }}-build-${{ hashFiles('**/Pipfile.lock') }}
+        key: ${{ env.pythonLocation }}-${{ runner.os }}-build-${{ hashFiles('**/Pipfile.lock') }}
 
     # Runs a single command using the runners shell
     - name: Run a one-line script
@@ -42,7 +72,7 @@ jobs:
     - name: install package
       run: make config
     - name: Start MongoDB
-      uses: supercharge/mongodb-github-action@1.3.0
+      uses: supercharge/mongodb-github-action@1.6.0
       with:
         mongodb-version: latest
     - name: Run test
